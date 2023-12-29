@@ -1,5 +1,7 @@
 # Smooth Voxels
 
+**Repository under construction. Do not use (yet)!**
+
 ![Gallery](https://github.com/SamuelVanEgmond/smoothvoxels/assets/95985602/5bf248cb-726e-4490-b2fd-2305f4fac160)
 
 Are you a developer and not a 3D designer with crazy (or any) Blender skills? But you would still like to create your own 3D models, for instance for a great little WebXR game? Then Smooth Voxels is for you!
