@@ -1,6 +1,6 @@
 /**************************************\
 *          Smooth Voxels               *
-* Copyright (c) 2023 Samuel Van Egmond *
+* Copyright (c) 2024 Samuel Van Egmond *
 *           MIT License                *
 *    https://smoothvoxels.glitch.me    *
 \**************************************/
@@ -41,6 +41,7 @@ SVOX.FLAT   = "flat";   // Flat shaded triangles
 SVOX.QUAD   = "quad";   // Flat shaded quads
 SVOX.SMOOTH = "smooth"; // Smooth shaded triangles
 SVOX.BOTH   = "both";   // Smooth shaded, but flat shaded clamped / flattened
+SVOX.SIDES  = "sides";  // Smooth shaded per side, with hard edges between sides
 
 // Material side constants
 SVOX.FRONT  = "front";  // Show only front side of the material
@@ -155,6 +156,18 @@ SVOX._AONEIGHBORS = {
 // Logging functions
 
 /**
+ * Returns an html escaped version of a string
+ * @param {string} str The string to escape
+ */
+SVOX.htmlEscape = function (str) {
+  return str
+      .replace(/&/g, '&amp')
+      .replace(/>/g, '&gt')   
+      .replace(/</g, '&lt') 
+      .replace(/\n/g, '<br>');  
+}; 
+
+/**
  * Log errors to the console and an optional div #svoxerrors (as in the playground)
  * @param {error} Error object with name and message
  */
@@ -163,7 +176,7 @@ SVOX.logError = function(error) {
   let errorText = error.name + ": " + error.message.replace('(__playground)', '').trim();
   let errorElement = document.getElementById('svoxerrors');
   if (errorElement)
-    errorElement.innerHTML += errorText + '<br>';
+    errorElement.innerHTML += SVOX.htmlEscape(errorText) + '<br>';
   console.error(`SVOX ${errorText}`);    
 };
   
@@ -177,7 +190,7 @@ SVOX.logWarning = function(warning, modelName) {
   if (this.showWarnings) {
     let warningElement = document.getElementById('svoxwarnings');
     if (warningElement)
-      warningElement.innerHTML += warningText + '<br>';
+      warningElement.innerHTML += SVOX.htmlEscape(warningText) + '<br>';
   }
   console.warn(`SVOX ${modelName ? '(' + modelName + ') ' : ''}${warningText}`);
 };
@@ -375,6 +388,10 @@ class BoundingBox {
       return { x:0, y:0, z:0 };
     }
   }
+  
+  get sizeX() { return this.maxX - this.minX };
+  get sizeY() { return this.maxY - this.minY };
+  get sizeZ() { return this.maxZ - this.minZ };
         
   // End of class BoundingBox
 }
@@ -1252,43 +1269,50 @@ class Model {
     this.groups = new GroupList();
     this.materials = new MaterialList();
     this.voxels = new VoxelMatrix();
-    this.vertices = new VertexMatrix(this); 
-    
-    this.groups.createGroup( { id:'*', 
-                                scale: this.scale, 
-                                shape: this.shape,
-                                origin: this.origin, 
-                                resize: this.resize, 
-                                rotation: this.rotation, 
-                                position: this.position
-                              } );    
+    this.vertices = new VertexMatrix(this);  
   }
 
-  get settings()  { return this._settings;           }
+  get settings()            { return this._settings;                     }
   
-  get name()      { return this._settings.name;      }
-  get size()      { return this.voxels.size;         }
-  get scale()     { return this._settings.scale;     }
-  get rotation()  { return this._settings.rotation;  }
-  get position()  { return this._settings.position;  }
-  get simplify()  { return this._settings.simplify;  }
-  get resize()    { return this._settings.resize;    }
-  get shape()     { return this._settings.shape;     }
-  get wireframe() { return this._settings.wireframe; }
-  get origin()    { return this._settings.origin;    }
-  get flatten()   { return this._settings.flatten;   }
-  get clamp()     { return this._settings.clamp;     }
-  get skip()      { return this._settings.skip;      }
-  get hide()      { return this._settings.hide;      }
-  get tile()      { return this._settings.tile;      }
-  get shape()     { return this._settings.shape;     }
-  get ao()        { return this._settings.ao;        }
-  get quickAo()   { return this._settings.quickAo;   }
-  get aoSides()   { return this._settings.aoSides;   }
-  get aoSamples() { return this._settings.aoSamples; }
-  get data()      { return this._settings.data;      }
-  get shell()     { return this._settings.shell;     }
-  get improveNonManifold() { return this._settings.improveNonManifold; }
+  get name()                { return this._settings.name;                }
+  get size()                { return this.voxels.size;                   }
+  get scale()               { return this._settings.scale;               }
+  get rotation()            { return this._settings.rotation;            }
+  get position()            { return this._settings.position;            }
+  get simplify()            { return this._settings.simplify;            }
+  get resize()              { return this._settings.resize;              }
+  get shape()               { return this._settings.shape;               }
+  get wireframe()           { return this._settings.wireframe;           }
+  get origin()              { return this._settings.origin;              }
+  get flatten()             { return this._settings.flatten;             }
+  get clamp()               { return this._settings.clamp;               }
+  get skip()                { return this._settings.skip;                }
+  get hide()                { return this._settings.hide;                }
+  get tile()                { return this._settings.tile;                }
+  get shape()               { return this._settings.shape;               }
+  get scaleYX()             { return this._settings.scaleYX;             }  
+  get scaleZX()             { return this._settings.scaleZX;             }  
+  get scaleXY()             { return this._settings.scaleXY;             }  
+  get scaleZY()             { return this._settings.scaleZY;             }  
+  get scaleXZ()             { return this._settings.scaleXZ;             }  
+  get scaleYZ()             { return this._settings.scaleYZ;             }  
+  get rotateX()             { return this._settings.rotateX;             }  
+  get rotateY()             { return this._settings.rotateY;             }  
+  get rotateZ()             { return this._settings.rotateZ;             }  
+  get translateYX()         { return this._settings.translateYX;         }  
+  get translateZX()         { return this._settings.translateZX;         }  
+  get translateXY()         { return this._settings.translateXY;         }  
+  get translateZY()         { return this._settings.translateZY;         }  
+  get translateXZ()         { return this._settings.translateXZ;         }  
+  get translateYZ()         { return this._settings.translateYZ;         }  
+  get ao()                  { return this._settings.ao;                  }
+  get quickAo()             { return this._settings.quickAo;             }
+  get aoSides()             { return this._settings.aoSides;             }
+  get aoSamples()           { return this._settings.aoSamples;           }
+  get shadowQuality()       { return this._settings.shadowQuality;       }
+  get data()                { return this._settings.data;                }
+  get shell()               { return this._settings.shell;               }
+  get improveNonManifold()  { return this._settings.improveNonManifold;  }
       
   prepareForWrite(countColors) {
     this.settings.size = this.size;
@@ -1395,6 +1419,9 @@ class Model {
   determineBoundsForAllGroups(prepareForResize = false) {
 
     this.voxels.bounds.reset();
+    this.vertexBounds = this.vertexBounds ?? new BoundingBox();
+    this.vertexBounds.reset();
+
     this.groups.forEach(function(group) {
       group.bounds.reset();
       group.vertexBounds.reset();
@@ -1412,6 +1439,7 @@ class Model {
           for (let v = 0; v < 4; v++) {
             let vertex = face.vertices[v];
             vertex.group.vertexBounds.set(vertex.x, vertex.y, vertex.z);
+            this.vertexBounds.set(vertex.x, vertex.y, vertex.z);
           }
         }
       }
@@ -1470,9 +1498,9 @@ class Model {
           group.vertexBounds.copy(group.bounds);
         }
 
-        let offsetX = (group.vertexBounds.maxX - group.vertexBounds.minX)/2;
-        let offsetY = (group.vertexBounds.maxY - group.vertexBounds.minY)/2;
-        let offsetZ = (group.vertexBounds.maxZ - group.vertexBounds.minZ)/2;      
+        let offsetX = (group.vertexRescale.x * (group.vertexBounds.maxX - group.vertexBounds.minX))/2;
+        let offsetY = (group.vertexRescale.y * (group.vertexBounds.maxY - group.vertexBounds.minY))/2;
+        let offsetZ = (group.vertexRescale.z * (group.vertexBounds.maxZ - group.vertexBounds.minZ))/2;      
 
         // Determine the origin offset
         group.originOffset = { x: 0, y: 0, z: 0 };
@@ -1748,7 +1776,7 @@ class PropertyParser {
           if (!Number.isFinite(xy.x) || !Number.isFinite(xy.y)) {
             throw {
               name: 'SyntaxError',
-              message: `'${name}' object must have two values.`
+              message: `There should be two values.`
             };
           }
         } 
@@ -1756,7 +1784,7 @@ class PropertyParser {
           if (!allowUniform) {
             throw {
               name: 'SyntaxError',
-              message: `'${name}' must have two values.`
+              message: `There should be two values.`
             };
           }
           xy = {
@@ -1790,7 +1818,7 @@ class PropertyParser {
           if (xy.length !== 2) {
             throw {
               name: 'SyntaxError',
-              message: `'${name}' must have ${allowUniform?'one or':''} two values.`
+              message: `There should be ${allowUniform?'one or':''} two values.`
             };
           }
 
@@ -1805,7 +1833,7 @@ class PropertyParser {
       catch(ex) {
         throw {
           name: 'SyntaxError',
-          message: `Invalid value '${value}' for '${name}'.`
+          message: `Invalid value '${value}' for '${name}'. ${ex.message ? ex.message : ''}.`
         };        
       }
     }  
@@ -1855,7 +1883,7 @@ class PropertyParser {
           if (!Number.isFinite(xyz.x) || !Number.isFinite(xyz.y) || !Number.isFinite(xyz.z)) {
             throw {
               name: 'SyntaxError',
-              message: `'${name}' object must have three values.`
+              message: `There should be three values.`
             };
           }
         } 
@@ -1863,7 +1891,7 @@ class PropertyParser {
           if (!allowUniform) {
             throw {
               name: 'SyntaxError',
-              message: `'${name}' must have three values.`
+              message: `There should be three values.`
             };
           }
           xyz = {
@@ -1903,7 +1931,7 @@ class PropertyParser {
           if (xyz.length !== 3) {
             throw {
               name: 'SyntaxError',
-              message: `'${name}' must have ${allowUniform?'one or':''} three values.`
+              message: `There should be ${allowUniform?'one or':''} three values.`
             };
           }
 
@@ -1919,10 +1947,57 @@ class PropertyParser {
       catch(ex) {
         throw {
           name: 'SyntaxError',
-          message: `Invalid value '${value}' for '${name}'.`
+          message: `Invalid value '${value}' for '${name}'. ${ex.message ? ex.message : ''}.`
         };        
       }
     }
+  
+    /**
+     * Parses an 'float0, float1, ..., floatn' string into an array with float values
+     * @param {string} name The name of the field
+     * @param {string} value The string value of the field
+     * @returns {array} An array with floats 
+     */
+    static parseFloatArray(name, value) {
+      try {
+        if (value === undefined || value === null) {
+          return undefined;
+        }
+        
+        let array = [];
+        if (Array.isArray(value)) {
+          array = value;
+        } 
+        else if (typeof value === 'number') {
+          array = [value];
+        }
+        else if (typeof value === 'string') {
+          let values = value.split(/\s+/).filter(s => s);
+          for (let v = 0; v < values.length; v++) {
+            array[v] = PropertyParser._parseFloatPart(values[v]);
+          }
+        }
+        
+        if (array.length === 0) {
+          throw {
+            name: 'SyntaxError',
+            message: `There should be one or more float values.`
+          };
+        }
+        
+        if (array.length === 1) {
+          array.unshift(0);
+        }
+
+        return array;
+      }
+      catch(ex) {
+        throw {
+          name: 'SyntaxError',
+          message: `Invalid value '${value}' for '${name}'. ${ex.message ? ex.message : ''}.`
+        };        
+      }
+    }  
 
     /**
      * parseFloat replacement with default value in case the string is not a float
@@ -1931,7 +2006,7 @@ class PropertyParser {
      * @param {float} defaultValue the default value when the value is not a valid float
      */
     static _parseFloatPart(value, defaultValue) {
-      if (value === null || value === undefined) {
+      if ((value === null || value === undefined)) {
         return defaultValue;
       }
       else if (typeof value === 'number') {
@@ -1989,11 +2064,20 @@ class PropertyParser {
               // Default to black color
               parseValue = "#000 " + parseValue;
           }
+          
+          let parts = parseValue.split(/\s+/);
+          
+          if (parts.length < 1 || parts.length > 4 ) {
+            throw {
+              name: 'SyntaxError',
+              message: `Ao should be of the form [color>] <maxdistance> [<intensity>] [<angle>].`
+            };
+          }          
 
-          let color = PropertyParser.parseColor(name, '#000', parseValue.split(/\s+/)[0]);
-          let maxDistance = Math.abs(PropertyParser._parseFloatPart(parseValue.split(/\s+/)[1], 1.0));
-          let intensity = PropertyParser._parseFloatPart(parseValue.split(/\s+/)[2], 1);
-          let angle = PropertyParser._parseFloatPart(parseValue.split(/\s+/)[3], 70);
+          let color = PropertyParser.parseColor(name, '#000', parts[0]);
+          let maxDistance = Math.abs(PropertyParser._parseFloatPart(parts[1], 1.0));
+          let intensity = PropertyParser._parseFloatPart(parts[2], 1);
+          let angle = PropertyParser._parseFloatPart(parts[3], 70);
 
           angle = Math.max(0, Math.min(180, Math.round(angle)));
 
@@ -2003,7 +2087,7 @@ class PropertyParser {
       catch(ex) {
         throw {
           name: 'SyntaxError',
-          message: `Invalid value '${value}' for '${name}'.`
+          message: `Invalid value '${value}' for '${name}'. ${ex.message ? ex.message : ''}.`
         };        
       }
     } 
@@ -2027,9 +2111,18 @@ class PropertyParser {
               // Default to black color
               parseValue = "#000 " + parseValue;
           }
+          
+          let parts = parseValue.split(/\s+/);
+          
+          if (parts.length < 1 || parts.length > 2 ) {
+            throw {
+              name: 'SyntaxError',
+              message: `Quickao should be of the form [<color>] <intensity>.`
+            };
+          }                   
 
-          let color = PropertyParser.parseColor(name, '#000', parseValue.split(/\s+/)[0]);
-          let intensity = PropertyParser._parseFloatPart(parseValue.split(/\s+/)[1], 1);
+          let color = PropertyParser.parseColor(name, '#000', parts[0]);
+          let intensity = PropertyParser._parseFloatPart(parts[1], 1);
 
           return { color, intensity };
         }
@@ -2037,7 +2130,7 @@ class PropertyParser {
       catch(ex) {
         throw {
           name: 'SyntaxError',
-          message: `Invalid value '${value}' for '${name}'.`
+          message: `Invalid value '${value}' for '${name}'. ${ex.message ? ex.message : ''}.`
         };        
       }
     } 
@@ -2186,7 +2279,7 @@ class PropertyParser {
       if (error) {
         throw {
           name: 'SyntaxError',
-          message: `Invalid value '${value}' for ${name}. Shell must be 'none' or one or more color ID's and distances, e.g. P 0.2 Q 0.4`
+          message: `Invalid value '${value}' for ${name}. Shell should be 'none' or one or more color ID's and distances, e.g. P 0.2 Q 0.4`
         };        
       }
       else if (shell) {
@@ -2976,6 +3069,15 @@ class LightWriter {
       write: undefined,
       parse: PropertyParser.parseName.bind(null, "group", '*'),
     },      
+    recolor: {
+      doc: "Recolor (some of) the colors for this group, or its sub groups, by specifying a new hexadecimal RGB value for them.",
+      format: "[<colorid>:<#RGB|#RRGGBB>]+",
+      values: undefined,
+      completion: "V:#F80",
+      dontWrite: undefined,
+      write: (v) => PropertyWriter.writeColors(v),
+      parse: PropertyParser.parseColors.bind(null, "recolor"),
+    },        
     scale: {
       doc: "The scale of the voxels for this group in voxels (0.5 = half the size of voxels in model).",
       format: "<x> [<y> <z>]",
@@ -2985,15 +3087,6 @@ class LightWriter {
       write: (v) => PropertyWriter.writeFloatXYZ(v, true),
       parse: PropertyParser.parseScale.bind(null, "scale", undefined)
     },
-    shape: {
-      doc: "Reshapes the group to fit in this shape.",
-      format: undefined,
-      values: ["box","sphere","cylinder-x","cylinder-y","cylinder-z"],
-      completion: "cylinder-y",
-      dontWrite: undefined,
-      write: undefined,
-      parse: PropertyParser.parseEnum.bind(null, "shape", ["box", "sphere", "cylinder-x", "cylinder-y", "cylinder-z"], undefined),
-    },    
     origin: {
       doc: "The origin for the group.",
       format: "{ -x x +x -y y +y -z z +z }",
@@ -3039,15 +3132,153 @@ class LightWriter {
       write: (v) => PropertyWriter.writeFloatXYZ(v, false),
       parse: PropertyParser.parseXYZFloat.bind(null, "translation", false, undefined, undefined, undefined),
     },
-    recolor: {
-      doc: "Recolor (some of) the colors for this group, or its sub groups, by specifying a new hexadecimal RGB value for them.",
-      format: "[<colorid>:<#RGB|#RRGGBB>]+",
-      values: undefined,
-      completion: "V:#F80",
+    _shape: {
+      doc: "Shape properties"
+    },
+    shape: {
+      doc: "Reshapes the group to fit in this shape. Is not applied to nested groups. Values cylinder-x, cylinder-y and cylinder-z will be deprecated in a future release!",
+      format: undefined,
+      values: ["box","sphere","cylinderx","cylindery","cylinderz"],
+      completion: "cylindery",
       dontWrite: undefined,
-      write: (v) => PropertyWriter.writeColors(v),
-      parse: PropertyParser.parseColors.bind(null, "recolor"),
-    }    
+      write: undefined,
+      parse: PropertyParser.parseEnum.bind(null, "shape", ["box","sphere","cylinderx","cylindery","cylinderz"], undefined),
+    },    
+    scaleYX: {
+      doc: "Scale Y over X, i.e. scales the group in the Y direction depending on the X position. Is not applied to nested groups..  When textures are distored use simplify = false.",
+      format: "<scale0> <scale1> ... <scaleN>",
+      values: undefined,
+      completion: "1.5 0.5 1.5",
+      dontWrite: undefined,
+      write: (v) => v.join(' '),
+      parse: PropertyParser.parseFloatArray.bind(null, "scaleyx"),
+    },     
+    scaleZX: {
+      doc: "Scale Z over X, i.e. scales the group in the Z direction depending on the X position. Is not applied to nested groups.  When textures are distored use simplify = false.",
+      format: "<scale0> <scale1> ... <scaleN>",
+      values: undefined,
+      completion: "1.5 0.5 1.5",
+      dontWrite: undefined,
+      write: (v) => v.join(' '),
+      parse: PropertyParser.parseFloatArray.bind(null, "scalezx"),
+    },
+    scaleXY: {
+      doc: "Scale X over Y, i.e. scales the model in the X direction depending on the Y position. Is not applied to nested groups.  When textures are distored use simplify = false.",
+      format: "<scale0> <scale1> ... <scaleN>",
+      values: undefined,
+      completion: "1.5 0.5 1.5",
+      dontWrite: undefined,
+      write: (v) => v.join(' '),
+      parse: PropertyParser.parseFloatArray.bind(null, "scalexy"),
+    },    
+    scaleZY: {
+      doc: "Scale Z over Y, i.e. scales the group in the Z direction depending on the Y position. Is not applied to nested groups.  When textures are distored use simplify = false.",
+      format: "<scale0> <scale1> ... <scaleN>",
+      values: undefined,
+      completion: "1.5 0.5 1.5",
+      dontWrite: undefined,
+      write: (v) => v.join(' '),
+      parse: PropertyParser.parseFloatArray.bind(null, "scalezy"),
+    },       
+    scaleXZ: {
+      doc: "Scale X over Z, i.e. scales the group in the X direction depending on the Z position. Is not applied to nested groups.  When textures are distored use simplify = false.",
+      format: "<scale0> <scale1> ... <scaleN>",
+      values: undefined,
+      completion: "1.5 0.5 1.5",
+      dontWrite: undefined,
+      write: (v) => v.join(' '),
+      parse: PropertyParser.parseFloatArray.bind(null, "scalexz"),
+    },       
+    scaleYZ: {
+      doc: "Scale Y over Z, i.e. scales the group in the Y direction depending on the Z position. Is not applied to nested groups.  When textures are distored use simplify = false.",
+      format: "<scale0> <scale1> ... <scaleN>",
+      values: undefined,
+      completion: "1.5 0.5 1.5",
+      dontWrite: undefined,
+      write: (v) => v.join(' '),
+      parse: PropertyParser.parseFloatArray.bind(null, "scaleyz"),
+    },     
+    rotateX: {
+      doc: "Rotate the group over the X axis, i.e. rotates the group depending on the X position. Is not applied to nested groups.",
+      format: "<degrees0> <degrees1> ... <degreesN>",
+      values: undefined,
+      completion: "0 90 0",
+      dontWrite: undefined,
+      write: (v) => v.join(' '),
+      parse: PropertyParser.parseFloatArray.bind(null, "rotatex"),
+    },     
+    rotateY: {
+      doc: "Rotate the group over the Y axis, i.e. rotates the group depending on the Y position. Is not applied to nested groups.",
+      format: "<degrees0> <degrees1> ... <degreesN>",
+      values: undefined,
+      completion: "0 90 0",
+      dontWrite: undefined,
+      write: (v) => v.join(' '),
+      parse: PropertyParser.parseFloatArray.bind(null, "rotatey"),
+    },     
+    rotateZ: {
+      doc: "Rotate the group over the Z axis, i.e. rotates the group depending on the Z position. Is not applied to nested groups.",
+      format: "<degrees0> <degrees1> ... <degreesN>",
+      values: undefined,
+      completion: "0 90 0",
+      dontWrite: undefined,
+      write: (v) => v.join(' '),
+      parse: PropertyParser.parseFloatArray.bind(null, "rotatez"),
+    },     
+    translateYX: {
+      doc: "Translate Y over X, i.e. translates the group in the Y direction depending on the X position. Is not applied to nested groups.",
+      format: "<offset0> <offset1> ... <offsetN>",
+      values: undefined,
+      completion: "-1 1 -1",
+      dontWrite: undefined,
+      write: (v) => v.join(' '),
+      parse: PropertyParser.parseFloatArray.bind(null, "translateyx"),
+    },     
+    translateZX: {
+      doc: "Translate Z over X, i.e. translates the group in the Z direction depending on the X position. Is not applied to nested groups.",
+      format: "<offset0> <offset1> ... <offsetN>",
+      values: undefined,
+      completion: "-1 1 -1",
+      dontWrite: undefined,
+      write: (v) => v.join(' '),
+      parse: PropertyParser.parseFloatArray.bind(null, "translatezx"),
+    },     
+    translateXY: {
+      doc: "Translate X over Y, i.e. translates the group in the X direction depending on the Y position. Is not applied to nested groups.",
+      format: "<offset0> <offset1> ... <offsetN>",
+      values: undefined,
+      completion: "-1 1 -1",
+      dontWrite: undefined,
+      write: (v) => v.join(' '),
+      parse: PropertyParser.parseFloatArray.bind(null, "translatexy"),
+    },
+    translateZY: {
+      doc: "Translate Z over Y, i.e. translates the group in the Z direction depending on the Y position. Is not applied to nested groups.",
+      format: "<offset0> <offset1> ... <offsetN>",
+      values: undefined,
+      completion: "-1 1 -1",
+      dontWrite: undefined,
+      write: (v) => v.join(' '),
+      parse: PropertyParser.parseFloatArray.bind(null, "translatezy"),
+    },       
+    translateXZ: {
+      doc: "Translate X over Z, i.e. translates the group in the X direction depending on the Z position. Is not applied to nested groups.",
+      format: "<offset0> <offset1> ... <offsetN>",
+      values: undefined,
+      completion: "-1 1 -1",
+      dontWrite: undefined,
+      write: (v) => v.join(' '),
+      parse: PropertyParser.parseFloatArray.bind(null, "translatexz"),
+    },       
+    translateYZ: {
+      doc: "Translate Y over Z, i.e. translates the group in the Y direction depending on the Z position. Is not applied to nested groups.",
+      format: "<offset0> <offset1> ... <offsetN>",
+      values: undefined,
+      completion: "-1 1 -1",
+      dontWrite: undefined,
+      write: (v) => v.join(' '),
+      parse: PropertyParser.parseFloatArray.bind(null, "translateyz"),
+    },
   };
 })();
 
@@ -3124,7 +3355,19 @@ class GroupReader {
             message: `(${modelName}) Unknown property '${property}' found in group.`
         };                  
       }
-    } 
+    }
+    
+    if (parameters.shape) {
+      // PropertyParser.parseEnum already throws a warning for the DEPRECATED values cylinder-x, cylinder-y, cylinder-z
+      // So just remove the '-'
+      if (["cylinder-x","cylinder-y","cylinder-z"].includes(parameters.shape)) {
+        SVOX.logWarning({
+          name: 'ModelWarning',
+          message: `(${modelName}) '${parameters.shape}' is deprecated as value for 'shape'.`
+        });      
+        parameters.shape = parameters.shape.replace('-', '');
+      }
+    }
   }
   
   // Validate / improve the settings where needed
@@ -3231,14 +3474,14 @@ class GroupWriter {
       parse: PropertyParser.parseName.bind(null, "group", '*'),
     },    
     lighting: {
-      doc: "The lighting of the surface. Smooth, flat (triangles), quad (rectangles) or both.",
+      doc: "The lighting of the surface. Smooth, flat (triangles), quad (rectangles), both (smooth with clamped sides) or sides (smooth sides with hard edges).",
       format: undefined,
-      values: ["flat","quad","smooth","both"],
+      values: ["flat","quad","smooth","both","sides"],
       completion: "",
       basic, lambert, phong, standard, physical, toon, matcap, normal,
       dontWrite: "flat",
       write: undefined,
-      parse: PropertyParser.parseEnum.bind(null, "lighting", ["flat", "quad", "smooth", "both"], "flat"),
+      parse: PropertyParser.parseEnum.bind(null, "lighting", ["flat", "quad", "smooth", "both", "sides"], "flat"),
     },
     side: {
       doc: "Defines which side of faces will be rendered.",
@@ -3884,7 +4127,7 @@ class GroupWriter {
       doc: "Scatters the vertices. Distance is in voxels",
       format: "<float>",
       values: undefined,
-      completion: "0.5",
+      completion: "0.35",
       basic, lambert, phong, standard, physical, toon, matcap, normal,
       dontWrite: "0",
       write: undefined,
@@ -4600,15 +4843,6 @@ class VoxelWriter {
       write: (v) => PropertyWriter.writeFloatXYZ(v, true),
       parse: PropertyParser.parseScale.bind(null, "scale", "1 1 1")
     },
-    shape: {
-      doc: "Reshapes the model to fit in this shape.",
-      format: undefined,
-      values: ["box","sphere","cylinder-x","cylinder-y","cylinder-z"],
-      completion: "cylinder-y",
-      dontWrite: "box",
-      write: undefined,
-      parse: PropertyParser.parseEnum.bind(null, "shape", ["box", "sphere", "cylinder-x", "cylinder-y", "cylinder-z"], "box"),
-    },
     origin: {
       doc: "The origin for the model.",
       format: "{ -x x +x -y y +y -z z +z }",
@@ -4653,6 +4887,153 @@ class VoxelWriter {
       dontWrite: undefined,
       write: undefined,
       parse: PropertyParser.parseBoolean.bind(null, "wireframe", undefined),
+    },
+    _shape: {
+      doc: "Shape properties"
+    },
+    shape: {
+      doc: "Reshapes the model to fit in this shape.  Is not applied to groups. Values cylinder-x, cylinder-y and cylinder-z will be deprecated in in a future release!",
+      format: undefined,
+      values: ["box","sphere","cylinderx","cylindery","cylinderz"],
+      completion: "cylindery",
+      dontWrite: undefined,
+      write: undefined,
+      parse: PropertyParser.parseEnum.bind(null, "shape", ["box","sphere","cylinderx","cylindery","cylinderz"], undefined),
+    },
+    scaleYX: {
+      doc: "Scale Y over X, i.e. scales the group in the Y direction depending on the X position.  Is not applied to groups. When textures are distored use simplify = false.",
+      format: "<scale0> <scale1> ... <scaleN>",
+      values: undefined,
+      completion: "1.5 0.5 1.5",
+      dontWrite: undefined,
+      write: (v) => v.join(' '),
+      parse: PropertyParser.parseFloatArray.bind(null, "scaleyx"),
+    },     
+    scaleZX: {
+      doc: "Scale Z over X, i.e. scales the group in the Z direction depending on the X position.  Is not applied to groups. When textures are distored use simplify = false.",
+      format: "<scale0> <scale1> ... <scaleN>",
+      values: undefined,
+      completion: "1.5 0.5 1.5",
+      dontWrite: undefined,
+      write: (v) => v.join(' '),
+      parse: PropertyParser.parseFloatArray.bind(null, "scalezx"),
+    },
+    scaleXY: {
+      doc: "Scale X over Y, i.e. scales the model in the X direction depending on the Y position.  Is not applied to groups. When textures are distored use simplify = false.",
+      format: "<scale0> <scale1> ... <scaleN>",
+      values: undefined,
+      completion: "1.5 0.5 1.5",
+      dontWrite: undefined,
+      write: (v) => v.join(' '),
+      parse: PropertyParser.parseFloatArray.bind(null, "scalexy"),
+    },    
+    scaleZY: {
+      doc: "Scale Z over Y, i.e. scales the group in the Z direction depending on the Y position.  Is not applied to groups. When textures are distored use simplify = false.",
+      format: "<scale0> <scale1> ... <scaleN>",
+      values: undefined,
+      completion: "1.5 0.5 1.5",
+      dontWrite: undefined,
+      write: (v) => v.join(' '),
+      parse: PropertyParser.parseFloatArray.bind(null, "scalezy"),
+    },       
+    scaleXZ: {
+      doc: "Scale X over Z, i.e. scales the group in the X direction depending on the Z position.  Is not applied to groups. When textures are distored use simplify = false.",
+      format: "<scale0> <scale1> ... <scaleN>",
+      values: undefined,
+      completion: "1.5 0.5 1.5",
+      dontWrite: undefined,
+      write: (v) => v.join(' '),
+      parse: PropertyParser.parseFloatArray.bind(null, "scalexz"),
+    },       
+    scaleYZ: {
+      doc: "Scale Y over Z, i.e. scales the group in the Y direction depending on the Z position.  Is not applied to groups. When textures are distored use simplify = false.",
+      format: "<scale0> <scale1> ... <scaleN>",
+      values: undefined,
+      completion: "1.5 0.5 1.5",
+      dontWrite: undefined,
+      write: (v) => v.join(' '),
+      parse: PropertyParser.parseFloatArray.bind(null, "scaleyz"),
+    }, 
+    rotateX: {
+      doc: "Rotate the group over the X axis, i.e. rotates the model depending on the X position. Is not applied to groups.",
+      format: "<degrees0> <degrees1> ... <degreesN>",
+      values: undefined,
+      completion: "0 90 0",
+      dontWrite: undefined,
+      write: (v) => v.join(' '),
+      parse: PropertyParser.parseFloatArray.bind(null, "rotatex"),
+    },     
+    rotateY: {
+      doc: "Rotate the group over the Y axis, i.e. rotates the model depending on the Y position. Is not applied to groups.",
+      format: "<degrees0> <degrees1> ... <degreesN>",
+      values: undefined,
+      completion: "0 90 0",
+      dontWrite: undefined,
+      write: (v) => v.join(' '),
+      parse: PropertyParser.parseFloatArray.bind(null, "rotatey"),
+    },     
+    rotateZ: {
+      doc: "Rotate the group over the Z axis, i.e. rotates the model depending on the Z position. Is not applied to groups.",
+      format: "<degrees0> <degrees1> ... <degreesN>",
+      values: undefined,
+      completion: "0 90 0",
+      dontWrite: undefined,
+      write: (v) => v.join(' '),
+      parse: PropertyParser.parseFloatArray.bind(null, "rotatez"),
+    },
+    translateYX: {
+      doc: "Translate Y over X, i.e. translates the model in the Y direction depending on the X position. Is not applied to groups.",
+      format: "<offset0> <offset1> ... <offsetN>",
+      values: undefined,
+      completion: "-1 1 -1",
+      dontWrite: undefined,
+      write: (v) => v.join(' '),
+      parse: PropertyParser.parseFloatArray.bind(null, "translateyx"),
+    },     
+    translateZX: {
+      doc: "Translate Z over X, i.e. translates the model in the Z direction depending on the X position. Is not applied to groups.",
+      format: "<offset0> <offset1> ... <offsetN>",
+      values: undefined,
+      completion: "-1 1 -1",
+      dontWrite: undefined,
+      write: (v) => v.join(' '),
+      parse: PropertyParser.parseFloatArray.bind(null, "translatezx"),
+    },     
+    translateXY: {
+      doc: "Translate X over Y, i.e. translates the model in the X direction depending on the Y position. Is not applied to groups.",
+      format: "<offset0> <offset1> ... <offsetN>",
+      values: undefined,
+      completion: "-1 1 -1",
+      dontWrite: undefined,
+      write: (v) => v.join(' '),
+      parse: PropertyParser.parseFloatArray.bind(null, "translatexy"),
+    },
+    translateZY: {
+      doc: "Translate Z over Y, i.e. translates the model in the Z direction depending on the Y position. Is not applied to groups.",
+      format: "<offset0> <offset1> ... <offsetN>",
+      values: undefined,
+      completion: "-1 1 -1",
+      dontWrite: undefined,
+      write: (v) => v.join(' '),
+      parse: PropertyParser.parseFloatArray.bind(null, "translatezy"),
+    },       
+    translateXZ: {
+      doc: "Translate X over Z, i.e. translates the model in the X direction depending on the Z position. Is not applied to groups.",
+      format: "<offset0> <offset1> ... <offsetN>",
+      values: undefined,
+      completion: "-1 1 -1",
+      dontWrite: undefined,
+      write: (v) => v.join(' '),
+      parse: PropertyParser.parseFloatArray.bind(null, "translatexz"),
+    },       
+    translateYZ: {
+      doc: "Translate Y over Z, i.e. translates the model in the Y direction depending on the Z position. Is not applied to groups.",
+      format: "<offset0> <offset1> ... <offsetN>",
+      values: undefined,
+      completion: "-1 1 -1",
+      dontWrite: undefined,
+      write: (v) => v.join(' '),
+      parse: PropertyParser.parseFloatArray.bind(null, "translateyz"),
     },
     _planar: {
       doc: "Planar properties"
@@ -4740,7 +5121,16 @@ class VoxelWriter {
       dontWrite: "50",
       write: undefined,
       parse: PropertyParser.parseFloat.bind(null, "aosamples", 50),
-    },      
+    },   
+    shadowQuality: {
+      doc: "When using castshadow = true on a lights, low shadow quality is less accurate and more blocky, but faster. Default is high.",
+      format: undefined,
+      values: ["hight","low"],
+      completion: "low",
+      dontWrite: undefined,
+      write: undefined,
+      parse: PropertyParser.parseEnum.bind(null, "shadowquality", ["high", "low"], undefined),
+    },    
     shell: {
       doc: "Material shell or shells.",
       format: "[<colorId> <distance>]+",
@@ -4842,6 +5232,9 @@ class ModelReader {
     this._validateSettings(settings, modelName);
     
     let model = new Model(settings);
+    
+    // Add the model itself as group '*'
+    this._createModelGroup(model);  
     
     parameters.textures.forEach(function (textureData) {
       model.textures.createTexture(textureData, modelName);
@@ -5134,7 +5527,19 @@ class ModelReader {
       if (group.prefab) {
         this._checkForNestedPrefabs(modelName, parameters.groups, group.id, group.id);
       }
-    }, this);          
+    }, this); 
+    
+    if (parameters.shape) {
+      // PropertyParser.parseEnum already throws a warning for the DEPRECATED values cylinder-x, cylinder-y, cylinder-z
+      // So just remove the '-'
+      if (["cylinder-x","cylinder-y","cylinder-z"].includes(parameters.shape)) {
+        SVOX.logWarning({
+          name: 'ModelWarning',
+          message: `(${modelName}) '${parameters.shape}' is deprecated as value for 'shape'.`
+        });      
+        parameters.shape = parameters.shape.replace('-', '');
+      }
+    }  
   }
     
   static _checkForNestedPrefabs(modelName, groups, groupId, originalPrefabId) {
@@ -5168,6 +5573,36 @@ class ModelReader {
           message: `(${modelName}) The properties 'ao' and 'quickao' can not be used together in the model settings. Use materials to override the model settings.`
       };    
     }     
+  }
+
+  /**
+  / Add the model itself as group '*'
+  / @param {object} model The model itself
+  */
+  static _createModelGroup(model) {
+    model.groups.createGroup( { id:'*', 
+                                scale: model.scale, 
+                                shape: model.shape,
+                                scaleYX: model.scaleYX,                           
+                                scaleZX: model.scaleZX,                           
+                                scaleXY: model.scaleXY,                           
+                                scaleZY: model.scaleZY,                           
+                                scaleXZ: model.scaleXZ,                           
+                                scaleYZ: model.scaleYZ,     
+                                rotateX: model.rotateX,
+                                rotateY: model.rotateY,
+                                rotateZ: model.rotateZ,
+                                translateYX: model.translateYX,                           
+                                translateZX: model.translateZX,                           
+                                translateXY: model.translateXY,                           
+                                translateZY: model.translateZY,                           
+                                translateXZ: model.translateXZ,                           
+                                translateYZ: model.translateYZ,
+                                origin: model.origin, 
+                                resize: model.resize, 
+                                rotation: model.rotation, 
+                                position: model.position
+                              } );       
   }
 
   /**
@@ -5245,8 +5680,9 @@ class ModelWriter {
   static writeToString(model, compressed, repeat) {
     repeat = Math.round(repeat || 1);
     
+    let multiplyFloat = function(value, i, values) { values[i] = value * repeat; };
     
-    if (repeat > 1) {
+    if (repeat > 1) { 
       if (model.warp) {
         model.warp.frequency /= repeat;
         model.warp.amplitude  *= repeat;
@@ -5256,13 +5692,27 @@ class ModelWriter {
       }
       if (model.ao) {
         model.ao.maxDistance *= repeat; 
-      }      
+      }  
+      
+      // The model.translate.. arrays are multiplied via the '*' group
+      
       model.groups.forEach((group) => {
         if (group.position) {
           group.position.x *= repeat;
           group.position.y *= repeat;
           group.position.z *= repeat;
         }
+        if (group.translation) {
+          group.translation.x *= repeat;
+          group.translation.y *= repeat;
+          group.translation.z *= repeat;
+        }
+        if (group.translateYX) group.translateYX.forEach(multiplyFloat);
+        if (group.translateZX) group.translateZX.forEach(multiplyFloat);
+        if (group.translateXY) group.translateXY.forEach(multiplyFloat);
+        if (group.translateZY) group.translateZY.forEach(multiplyFloat);
+        if (group.translateXZ) group.translateXZ.forEach(multiplyFloat);
+        if (group.translateYZ) group.translateYZ.forEach(multiplyFloat);
       });
 
       model.lights.forEach((light) => {
@@ -5893,7 +6343,7 @@ class GroupCloner {
             if (!clone.position && !clone.translation) {
               if (group.position)
                 clone.position = { x:0, y:0, z:0 };
-              else
+              if (group.translation)
                 clone.translation = { x:0, y:0, z:0 };
             }
           }
@@ -6233,71 +6683,63 @@ class VertexLinker {
 
 class ShapeModifier {
   
-  static changeShape(model) {
+  static modify(model) {
     // Bounds were determined in model.determineBoundsForAllGroups
     
-    let shapeFound = false;
-    let groups = {};
+    let circularDeform = false;
+    let groupParameters = {};
     model.groups.forEach(function(group) {
-      let parameters = null;
+      
+      let parameters = {
+        midX: (group.bounds.minX + group.bounds.maxX)/2,
+        midY: (group.bounds.minY + group.bounds.maxY)/2,
+        midZ: (group.bounds.minZ + group.bounds.maxZ)/2    
+      }
+
       switch (group.shape) {
-        case 'sphere'     : parameters = { xStrength:1, yStrength:1, zStrength:1 }; break;
-        case 'cylinder-x' : parameters = { xStrength:0, yStrength:1, zStrength:1 }; break;
-        case 'cylinder-y' : parameters = { xStrength:1, yStrength:0, zStrength:1 }; break;
-        case 'cylinder-z' : parameters = { xStrength:1, yStrength:1, zStrength:0 }; break;
-        case 'box': break;
-        default: break;
+        case 'sphere'    : parameters.circularDeform = { xStrength:1, yStrength:1, zStrength:1 }; circularDeform = true; break;
+        case 'cylinderx' : parameters.circularDeform = { xStrength:0, yStrength:1, zStrength:1 }; circularDeform = true; break;
+        case 'cylindery' : parameters.circularDeform = { xStrength:1, yStrength:0, zStrength:1 }; circularDeform = true; break;
+        case 'cylinderz' : parameters.circularDeform = { xStrength:1, yStrength:1, zStrength:0 }; circularDeform = true; break;
+        case 'box'       : break;
+        default          : break;
       }
       
-      if (parameters) {
-        parameters.xMid = (group.bounds.minX + group.bounds.maxX)/2;
-        parameters.yMid = (group.bounds.minY + group.bounds.maxY)/2;
-        parameters.zMid = (group.bounds.minZ + group.bounds.maxZ)/2;    
-        shapeFound = true;
-      }
-      
-      groups[group.id] = parameters;
-      
-      // Define the transformation in reverse order to how they are carried out
+      groupParameters[group.id] = parameters;      
     }, this);  
     
-    if (shapeFound) {
-      this._circularDeform(model, groups);
+    if (circularDeform) {
+      this._circularDeform(model, groupParameters);
     }
   }
-
-  static _circularDeform(model, groups) {
-    let group = null;
+  
+  static _circularDeform(model, groupParameters) {
     model.vertices.forEach(function(vertex) {
-      if (!group || group.id !== vertex.group.id)
-        group = groups[vertex.group.id];
+      let params = groupParameters[vertex.group.id];
+      let deform = params.circularDeform;
       
-      if (group) {     
-        let x = (vertex.x - group.xMid);
-        let y = (vertex.y - group.yMid);
-        let z = (vertex.z - group.zMid);
+      if (deform) {     
+        let x = (vertex.x - params.midX);
+        let y = (vertex.y - params.midY);
+        let z = (vertex.z - params.midZ);
         let sphereSize = Math.max(
-                            Math.abs(x * group.xStrength), 
-                            Math.abs(y * group.yStrength), 
-                            Math.abs(z * group.zStrength)
+                            Math.abs(x * deform.xStrength), 
+                            Math.abs(y * deform.yStrength), 
+                            Math.abs(z * deform.zStrength)
                           );
-        let vertexDistance = Math.sqrt(x*x*group.xStrength + y*y*group.yStrength + z*z*group.zStrength);
+        let vertexDistance = Math.sqrt(x*x*deform.xStrength + y*y*deform.yStrength + z*z*deform.zStrength);
         if (vertexDistance === 0) return;
         let factor = sphereSize / vertexDistance;
-        vertex.newX = x*((1-group.xStrength) + (group.xStrength)*factor) + group.xMid;
-        vertex.newY = y*((1-group.yStrength) + (group.yStrength)*factor) + group.yMid;
-        vertex.newZ = z*((1-group.zStrength) + (group.zStrength)*factor) + group.zMid;
-        vertex.newSet = true;
+        vertex.x = x*((1-deform.xStrength) + (deform.xStrength)*factor) + params.midX;
+        vertex.y = y*((1-deform.yStrength) + (deform.yStrength)*factor) + params.midY;
+        vertex.z = z*((1-deform.zStrength) + (deform.zStrength)*factor) + params.midZ;
         vertex.ring = sphereSize;
       }
     }, this);
-
-    this._repositionChangedVertices(model);
     
     this._markEquidistantFaces(model);
   }  
-  
-    
+ 
   static _markEquidistantFaces(model) {
     model.voxels.forEach(function(voxel) {      
       for (let faceName in voxel.faces) {
@@ -6317,28 +6759,6 @@ class ShapeModifier {
         }
       }
     }, this, true);
-  }
-
-  static _repositionChangedVertices(model, dontclamp) {
-    
-    // Add 0.5 to the min and max because vertices of voxel are 0 - +1  
-    // I.e voxel (0,0,0) occupies the space (0,0,0) - (1,1,1) 
-    let minX = model.voxels.minX + 0.5;
-    let maxX = model.voxels.maxX + 0.5;
-    let minY = model.voxels.minY + 0.5;
-    let maxY = model.voxels.maxY + 0.5;
-    let minZ = model.voxels.minZ + 0.5;
-    let maxZ = model.voxels.maxZ + 0.5;
-    
-    // Move all vertices to their new position without clamping / flattening
-    model.vertices.forEach(function(vertex) {
-      if (vertex.newSet) {
-        vertex.x = vertex.newX;
-        vertex.y = vertex.newY;
-        vertex.z = vertex.newZ;
-        vertex.newSet = false;
-      }
-    }, this); 
   }
 }
 
@@ -6416,16 +6836,13 @@ class Deformer {
       let amplitudeY = vertex.warp ? vertex.warp.amplitudeY : 0;
       let amplitudeZ = vertex.warp ? vertex.warp.amplitudeZ : 0;
       let frequency  = vertex.warp ? vertex.warp.frequency  : 0;
-      let frequencyX = amplitudeX !== 0 ? frequency : 0;
-      let frequencyY = amplitudeY !== 0 ? frequency : 0;
-      let frequencyZ = amplitudeZ !== 0 ? frequency : 0;
       let scatter    = vertex.scatter || 0;
       
       let xOffset = 0, yOffset = 0, zOffset = 0;
       if (((amplitudeX || amplitudeY || amplitudeZ) && frequency !== 0)) {
-        xOffset = noise( (vertex.x+0.19) * frequencyX, vertex.y * frequencyY, vertex.z * frequencyZ) * amplitudeX;
-        yOffset = noise( (vertex.y+0.17) * frequencyY, vertex.z * frequencyZ, vertex.x * frequencyX) * amplitudeY;
-        zOffset = noise( (vertex.z+0.13) * frequencyZ, vertex.x * frequencyX, vertex.y * frequencyY) * amplitudeZ;
+        xOffset = noise( (vertex.x+0.19) * frequency, vertex.y * frequency, vertex.z * frequency) * amplitudeX;
+        yOffset = noise( (vertex.y+0.17) * frequency, vertex.z * frequency, vertex.x * frequency) * amplitudeY;
+        zOffset = noise( (vertex.z+0.13) * frequency, vertex.x * frequency, vertex.y * frequency) * amplitudeZ;
       }
       
       if (scatter) {
@@ -6466,6 +6883,228 @@ class Deformer {
       }          
     }, this); 
   }
+}
+
+// =====================================================
+// ../smoothvoxels/meshgenerator/directionaltransformer.js
+// =====================================================
+
+class SkewAndScaleAxisModifier {
+  
+  static modify(model) {
+    // Bounds were determined in model.determineBoundsForAllGroups
+    
+    let scale = false;
+    let rotate = false;
+    let translate = false;
+    let groupParameters = {};
+    model.groups.forEach(function(group) {
+      
+      let parameters = {
+        bounds: group.vertexBounds,
+        midX: (group.vertexBounds.minX + group.vertexBounds.maxX)/2,
+        midY: (group.vertexBounds.minY + group.vertexBounds.maxY)/2,
+        midZ: (group.vertexBounds.minZ + group.vertexBounds.maxZ)/2    
+      }
+
+      parameters.scaleYX = group.scaleYX; scale = scale || parameters.scaleYX;
+      parameters.scaleZX = group.scaleZX; scale = scale || parameters.scaleZX;
+      parameters.scaleXY = group.scaleXY; scale = scale || parameters.scaleXY;
+      parameters.scaleZY = group.scaleZY; scale = scale || parameters.scaleZY;
+      parameters.scaleXZ = group.scaleXZ; scale = scale || parameters.scaleXZ;
+      parameters.scaleYZ = group.scaleYZ; scale = scale || parameters.scaleYZ;
+
+      parameters.rotateX = group.rotateX; rotate = rotate || parameters.rotateX;
+      parameters.rotateY = group.rotateY; rotate = rotate || parameters.rotateY;
+      parameters.rotateZ = group.rotateZ; rotate = rotate || parameters.rotateZ;
+
+      parameters.translateYX = group.translateYX; translate = translate || parameters.translateYX;
+      parameters.translateZX = group.translateZX; translate = translate || parameters.translateZX;
+      parameters.translateXY = group.translateXY; translate = translate || parameters.translateXY;
+      parameters.translateZY = group.translateZY; translate = translate || parameters.translateZY;
+      parameters.translateXZ = group.translateXZ; translate = translate || parameters.translateXZ;
+      parameters.translateYZ = group.translateYZ; translate = translate || parameters.translateYZ;
+      
+      groupParameters[group.id] = parameters;      
+    }, this);  
+    
+    // Store the original x, y and z for use in the interpolation
+    if (scale || rotate || translate) {
+      model.vertices.forEach(function(vertex) {
+        vertex.newX = vertex.x;
+        vertex.newY = vertex.y;
+        vertex.newZ = vertex.z;
+      }, this);      
+    }
+    
+    if (scale) {
+      this._scale(model, groupParameters);
+    }
+    
+    if (rotate) {
+      this._rotate(model, groupParameters);
+    }
+    
+    if (translate) {
+      this._translate(model, groupParameters);
+    }
+    
+  }
+  
+  static _scale(model, groupParameters) {
+    model.vertices.forEach(function(vertex) {
+      let params = groupParameters[vertex.group.id];
+      
+      // ScaleXY = Scale X over Y = scale X with the values in the array from the bottom to the top
+      
+      // Use the original vertex position to determine the scale 
+      let x = vertex.newX;
+      let y = vertex.newY;
+      let z = vertex.newZ;
+
+      if (params.scaleYX) {
+        let dist = (x - params.bounds.minX) / (params.bounds.sizeX ?? 1);
+        vertex.y = (vertex.y - params.midY) * this._interpolate(params.scaleYX, dist) + params.midY;
+      }
+
+      if (params.scaleZX) {
+        let dist = (x - params.bounds.minX) / (params.bounds.sizeX ?? 1);
+        vertex.z = (vertex.z - params.midZ) * this._interpolate(params.scaleZX, dist) + params.midZ;
+      }
+
+      if (params.scaleXY) {
+        let dist = (y - params.bounds.minY) / (params.bounds.sizeY ?? 1);
+        vertex.x = (vertex.x - params.midX) * this._interpolate(params.scaleXY, dist) + params.midX;
+      }
+
+      if (params.scaleZY) {
+        let dist = (y - params.bounds.minY) / (params.bounds.sizeY ?? 1);
+        vertex.z = (vertex.z - params.midZ) * this._interpolate(params.scaleZY, dist) + params.midZ;
+      }
+
+      if (params.scaleXZ) {
+        let dist = (z - params.bounds.minZ) / (params.bounds.sizeZ ?? 1);
+        vertex.x = (vertex.x - params.midX) * this._interpolate(params.scaleXZ, dist) + params.midX;
+      }
+      
+      if (params.scaleYZ) {
+        let dist = (z - params.bounds.minZ) / (params.bounds.sizeZ ?? 1);
+        vertex.y = (vertex.y - params.midY) * this._interpolate(params.scaleYZ, dist) + params.midY;
+      }
+      
+    }, this);
+  }  
+
+  static _rotate(model, groupParameters) {
+    model.vertices.forEach(function(vertex) {
+      let params = groupParameters[vertex.group.id];
+      
+      // RotateY = Rotate the model over Y = rotate Y with the values in the array from the bottom to the top
+      
+      // Use the original vertex position to determine the rotation 
+      let x = vertex.newX;
+      let y = vertex.newY;
+      let z = vertex.newZ;
+      
+      if (params.rotateX) {
+        let dist = (x - params.bounds.minX) / (params.bounds.sizeX ?? 1);
+        let degrees = this._interpolate(params.rotateX, dist);
+        this._rotateVertex(vertex, 'y', 'z', params.midY, params.midZ, degrees);
+      }
+
+      if (params.rotateY) {
+        let dist = (y - params.bounds.minY) / (params.bounds.sizeY ?? 1);
+        let degrees = this._interpolate(params.rotateY, dist);
+        this._rotateVertex(vertex, 'x', 'z', params.midX, params.midZ, -degrees);
+      }
+
+      if (params.rotateZ) {
+        let dist = (z - params.bounds.minZ) / (params.bounds.sizeZ ?? 1);
+        let degrees = this._interpolate(params.rotateZ, dist);
+        this._rotateVertex(vertex, 'x', 'y', params.midX, params.midY, degrees);
+      }
+
+    }, this);
+  }  
+
+  static _translate(model, groupParameters) {
+    model.vertices.forEach(function(vertex) {
+      let params = groupParameters[vertex.group.id];
+      
+      // translateXY = translate X over Y = translate X with the values in the array from the bottom to the top
+
+      // Use the original vertex position to determine the translation 
+      let x = vertex.newX;
+      let y = vertex.newY;
+      let z = vertex.newZ;
+
+      if (params.translateYX) {
+        let dist = (x - params.bounds.minX) / (params.bounds.sizeX ?? 1);
+        vertex.y += this._interpolate(params.translateYX, dist);
+      }
+
+      if (params.translateZX) {
+        let dist = (x - params.bounds.minX) / (params.bounds.sizeX ?? 1);
+        vertex.z += this._interpolate(params.translateZX, dist);
+      }
+
+      if (params.translateXY) {
+        let dist = (y - params.bounds.minY) / (params.bounds.sizeY ?? 1);
+        vertex.x += this._interpolate(params.translateXY, dist);
+      }
+
+      if (params.translateZY) {
+        let dist = (y - params.bounds.minY) / (params.bounds.sizeY ?? 1);
+        vertex.z += this._interpolate(params.translateZY, dist);
+      }
+
+      if (params.translateXZ) {
+        let dist = (z - params.bounds.minZ) / (params.bounds.sizeZ ?? 1);
+        vertex.x += this._interpolate(params.translateXZ, dist);
+      }
+
+      if (params.translateYZ) {
+        let dist = (z - params.bounds.minZ) / (params.bounds.sizeZ ?? 1);
+        vertex.y += this._interpolate(params.translateYZ, dist);
+      }
+      
+    }, this);
+  }
+  
+  static _rotateVertex(vertex, axisA, axisB, midA, midB, deg) {
+    let rad = Math.PI * deg / 180.0; // Convert degrees to radians
+    let cosRad = Math.cos(rad);
+    let sinRad = Math.sin(rad);
+    
+    // Translate back to origin
+    let a = vertex[axisA] - midA;
+    let b = vertex[axisB] - midB;
+    
+    // Rotate point
+    let aRotated = a * cosRad - b * sinRad;
+    let bRotated = a * sinRad + b * cosRad;
+    
+    // Translate point back
+    vertex[axisA] = aRotated + midA;
+    vertex[axisB] = bRotated + midB;
+  }
+  
+  static _interpolate(values, d) {
+      if(values.length < 2) throw new Error("Interpolation arrray must contain at least 2 values.");
+      if(d < 0 || d > 1) throw new Error("Interpolation value d must be a float between 0 and 1.");
+
+      let index = (values.length - 1) * d;
+
+      let lowerIndex = Math.floor(index);
+      let lowerValue = values[lowerIndex];
+      let fraction = index - lowerIndex;
+
+      if(fraction === 0) return lowerValue;
+
+      let higherValue = values[Math.ceil(index)];
+
+      return lowerValue + fraction * (higherValue - lowerValue);
+  }  
 }
 
 // =====================================================
@@ -6587,6 +7226,11 @@ class VertexTransformer {
               model._normalize(face.bothNormals[n]);
               face.bothNormals[n].transformed = true;
             }
+            if (!face.sideNormals[n].transformed) {
+              normalTransform.transformVector(face.sideNormals[n]);
+              model._normalize(face.sideNormals[n]);
+              face.sideNormals[n].transformed = true;
+            }
           }
         }
       }
@@ -6673,7 +7317,8 @@ class NormalsCalculator {
 
         face.flatNormals   = [null, null, null, null];
         face.smoothNormals = [null, null, null, null];
-        face.bothNormals   = [null, null, null, null];        
+        face.bothNormals   = [null, null, null, null]; 
+        face.sideNormals   = [null, null, null, null]; 
         
         // Per vertex calculate the normal by means of the cross product
         // using the previous vertex and the quad midpoint.
@@ -6682,12 +7327,14 @@ class NormalsCalculator {
           let vertex = face.vertices[v];
           let vprev = face.vertices[(v+3) % 4];
           
-          if (faceName === 'pz' && v === 2) {
-            let stop = true;
-          }
-          
           vertex.smoothNormal = vertex.smoothNormal || { x:0, y:0, z:0 };
           vertex.bothNormal   = vertex.bothNormal   || { x:0, y:0, z:0 };
+          if (!vertex.sideNormals) {
+            vertex.sideNormals  = {};
+          }
+          if (!vertex.sideNormals[faceName]) {
+            vertex.sideNormals[faceName] = { x:0, y:0, z:0 };
+          }
           
           // Subtract vectors
           let e1X = vprev.x - vertex.x, e1Y = vprev.y - vertex.y, e1Z = vprev.z - vertex.z;
@@ -6767,7 +7414,12 @@ class NormalsCalculator {
             vertex.bothNormal.y += normal.y;
             vertex.bothNormal.z += normal.z;
           }
-        }
+          
+          // And always set the side normals
+          vertex.sideNormals[faceName].x += normal.x;
+          vertex.sideNormals[faceName].y += normal.y;
+          vertex.sideNormals[faceName].z += normal.z;
+        }        
       }
     }, this, true);
       
@@ -6775,6 +7427,11 @@ class NormalsCalculator {
     model.vertices.forEach(function normalizeNormals(vertex) { 
       model._normalize(vertex.smoothNormal);
       model._normalize(vertex.bothNormal);
+      if (vertex.sideNormals) {
+        for (let faceName in vertex.sideNormals) {
+          model._normalize(vertex.sideNormals[faceName]);
+        }
+      }
     }, this);    
     
     
@@ -6800,6 +7457,11 @@ class NormalsCalculator {
         face.bothNormals[2] = !face.smooth || model._isZero(face.vertices[2].bothNormal) ? face.flatNormals[2] : face.vertices[2].bothNormal;
         face.bothNormals[3] = !face.smooth || model._isZero(face.vertices[3].bothNormal) ? face.flatNormals[3] : face.vertices[3].bothNormal;
         
+        face.sideNormals[0] = face.vertices[0].sideNormals?.[faceName];
+        face.sideNormals[1] = face.vertices[1].sideNormals?.[faceName];
+        face.sideNormals[2] = face.vertices[2].sideNormals?.[faceName];
+        face.sideNormals[3] = face.vertices[3].sideNormals?.[faceName];
+        
         // Now set the actual normals for this face
         switch (voxel.material.lighting) {
           case SVOX.SMOOTH:
@@ -6808,10 +7470,24 @@ class NormalsCalculator {
           case SVOX.BOTH:
             face.normals = face.bothNormals; 
             break;
+          case SVOX.SIDES:
+            face.normals = face.sideNormals; 
+            break;
           default:
             face.normals = face.flatNormals;
             break;
         }
+        
+        // Fix zero normals (which may happen in prism and piramid shapes created by 'scale.. = 1 0')
+        for (let v = 0; v < 4; v++) {
+          let normal = face.normals[v];
+          if (normal.x === 0 && normal.y === 0 && normal.z === 0) {
+            let normalPrev = face.normals[(v+3) % 4]; 
+            normal.x = normalPrev.x;
+            normal.y = normalPrev.y;
+            normal.z = normalPrev.z;
+          }        
+        }        
                 
         // If the vertex is used by opposite faces it is non manifold, wich gives bad normals on smooth voxels
         if ((voxel.material.lighting === SVOX.SMOOTH || voxel.material.lighting === SVOX.BOTH) && this._isNonManifold(face)) {
@@ -6980,7 +7656,8 @@ class Octree {
   }
     
   _aoSidesToOctree(model, octree, BIAS) {
-    let bounds = model.groups.getById('*').vertexBounds;
+    //let bounds = model.groups.getById('*').vertexBounds;
+    let bounds = model.vertexBounds;
     
     let sideTriangles = [];
     
@@ -7443,12 +8120,21 @@ class LightsCalculator {
 
           let cacheKey = `${vertex.x}|${vertex.y}|${vertex.z}|${normal.x}|${normal.y}|${normal.z}`;
           let cachedLight = cache[cacheKey];
+          let useCache = false;
           if (!cachedLight) {
             cachedLight = { r:0, g:0, b:0, c:0 };
             cache[cacheKey] = cachedLight;
           } 
-          cachedLight.c++;
+          else {
+            useCache = model.shadowQuality === 'low';
+          }
+          
           face.light[v] = cachedLight;
+          
+          if (useCache)
+            continue;
+
+          cachedLight.c++;
             
           model.actualLights.forEach(function(light) {
 
@@ -8002,19 +8688,31 @@ class Simplifier {
         let faceAo = face.ao; 
         let lastFaceAo = context.lastFace.ao; 
       
-        // Calculate the ratio between the face length and the total face length (in case they are combined)
-        let faceLength = Math.sqrt(
+        // Calculate the ratios between the face length and the total face length on each side
+        let faceLengthLeft = Math.sqrt(
                           (faceVertices[v1].x - faceVertices[v0].x) * (faceVertices[v1].x - faceVertices[v0].x) +
                           (faceVertices[v1].y - faceVertices[v0].y) * (faceVertices[v1].y - faceVertices[v0].y) +
                           (faceVertices[v1].z - faceVertices[v0].z) * (faceVertices[v1].z - faceVertices[v0].z)
                         );
-        let totalLength = Math.sqrt(
+        let totalLengthLeft = Math.sqrt(
                           (faceVertices[v1].x - lastFaceVertices[v0].x) * (faceVertices[v1].x - lastFaceVertices[v0].x) +
                           (faceVertices[v1].y - lastFaceVertices[v0].y) * (faceVertices[v1].y - lastFaceVertices[v0].y) +
                           (faceVertices[v1].z - lastFaceVertices[v0].z) * (faceVertices[v1].z - lastFaceVertices[v0].z)
                         ); 
-        let ratio = faceLength / totalLength;
+        let ratioLeft = totalLengthLeft === 0 ? 0.5 : faceLengthLeft / totalLengthLeft;
       
+        let faceLengthRight = Math.sqrt(
+                          (faceVertices[v2].x - faceVertices[v3].x) * (faceVertices[v2].x - faceVertices[v3].x) +
+                          (faceVertices[v2].y - faceVertices[v3].y) * (faceVertices[v2].y - faceVertices[v3].y) +
+                          (faceVertices[v2].z - faceVertices[v3].z) * (faceVertices[v2].z - faceVertices[v3].z)
+                        );
+        let totalLengthRight = Math.sqrt(
+                          (faceVertices[v2].x - lastFaceVertices[v3].x) * (faceVertices[v2].x - lastFaceVertices[v3].x) +
+                          (faceVertices[v2].y - lastFaceVertices[v3].y) * (faceVertices[v2].y - lastFaceVertices[v3].y) +
+                          (faceVertices[v2].z - lastFaceVertices[v3].z) * (faceVertices[v2].z - lastFaceVertices[v3].z)
+                        ); 
+        let ratioRight = totalLengthRight === 0 ? 0.5 : faceLengthRight / totalLengthRight;
+
         if ((voxel.material.type === SVOX.MATBASIC ||  // In case of basic material, ignore the normals
             (this._normalEquals(faceNormals[0], lastFaceNormals[0])  && 
              this._normalEquals(faceNormals[1], lastFaceNormals[1])  && 
@@ -8033,13 +8731,12 @@ class Simplifier {
             faceAo[2] === lastFaceAo[2] &&
             faceAo[3] === lastFaceAo[3] &&
             
-            (false || (
-              Math.abs(lastFaceVertices[v1][axis1] - (1-ratio) * faceVertices[v1][axis1] - ratio * lastFaceVertices[v0][axis1]) <= Number.EPSILON * 10 &&
-              Math.abs(lastFaceVertices[v1][axis2] - (1-ratio) * faceVertices[v1][axis2] - ratio * lastFaceVertices[v0][axis2]) <= Number.EPSILON * 10 &&
-              Math.abs(lastFaceVertices[v1][axis3] - (1-ratio) * faceVertices[v1][axis3] - ratio * lastFaceVertices[v0][axis3]) <= Number.EPSILON * 10 &&
-              Math.abs(lastFaceVertices[v2][axis1] - (1-ratio) * faceVertices[v2][axis1] - ratio * lastFaceVertices[v3][axis1]) <= Number.EPSILON * 10 &&
-              Math.abs(lastFaceVertices[v2][axis2] - (1-ratio) * faceVertices[v2][axis2] - ratio * lastFaceVertices[v3][axis2]) <= Number.EPSILON * 10 &&
-              Math.abs(lastFaceVertices[v2][axis3] - (1-ratio) * faceVertices[v2][axis3] - ratio * lastFaceVertices[v3][axis3]) <= Number.EPSILON * 10 ))
+            (Math.abs(lastFaceVertices[v1][axis1] - (1-ratioLeft) * faceVertices[v1][axis1] - ratioLeft * lastFaceVertices[v0][axis1]) <= Number.EPSILON * 10 &&
+             Math.abs(lastFaceVertices[v1][axis2] - (1-ratioLeft) * faceVertices[v1][axis2] - ratioLeft * lastFaceVertices[v0][axis2]) <= Number.EPSILON * 10 &&
+             Math.abs(lastFaceVertices[v1][axis3] - (1-ratioLeft) * faceVertices[v1][axis3] - ratioLeft * lastFaceVertices[v0][axis3]) <= Number.EPSILON * 10 &&
+             Math.abs(lastFaceVertices[v2][axis1] - (1-ratioRight) * faceVertices[v2][axis1] - ratioRight * lastFaceVertices[v3][axis1]) <= Number.EPSILON * 10 &&
+             Math.abs(lastFaceVertices[v2][axis2] - (1-ratioRight) * faceVertices[v2][axis2] - ratioRight * lastFaceVertices[v3][axis2]) <= Number.EPSILON * 10 &&
+             Math.abs(lastFaceVertices[v2][axis3] - (1-ratioRight) * faceVertices[v2][axis3] - ratioRight * lastFaceVertices[v3][axis3]) <= Number.EPSILON * 10 )
            ) 
         {
           // Everything checks out, so add this face to the last one
@@ -8052,12 +8749,15 @@ class Simplifier {
           context.lastFace.uv[v1] = face.uv[v1];
           context.lastFace.uv[v2] = face.uv[v2];
           
+          // Keep all normals because of the shells who may need them
           context.lastFace.flatNormals[v1] = face.flatNormals[v1];
           context.lastFace.flatNormals[v2] = face.flatNormals[v2];
           context.lastFace.smoothNormals[v1] = face.smoothNormals[v1];
           context.lastFace.smoothNormals[v2] = face.smoothNormals[v2];
           context.lastFace.bothNormals[v1] = face.bothNormals[v1];
           context.lastFace.bothNormals[v2] = face.bothNormals[v2];
+          context.lastFace.sideNormals[v1] = face.sideNormals[v1];
+          context.lastFace.sideNormals[v2] = face.sideNormals[v2];
           
           // And remove this face
           delete voxel.faces[faceName];
@@ -8160,6 +8860,7 @@ class FaceAligner {
           face.flatNormals.push(face.flatNormals.shift());
           face.smoothNormals.push(face.smoothNormals.shift());
           face.bothNormals.push(face.bothNormals.shift());
+          face.sideNormals.push(face.sideNormals.shift());
           face.ao.push(face.ao.shift());
           face.uv.push(face.uv.shift());
           if (face.vertexColors)
@@ -8181,6 +8882,7 @@ class FaceAligner {
             face.flatNormals.push(face.flatNormals.shift());
             face.smoothNormals.push(face.smoothNormals.shift());
             face.bothNormals.push(face.bothNormals.shift());
+            face.sideNormals.push(face.sideNormals.shift());
             face.ao.push(face.ao.shift());
             face.uv.push(face.uv.shift());
             if (face.vertexColors)
@@ -8199,6 +8901,7 @@ class FaceAligner {
             face.flatNormals.push(face.flatNormals.shift());
             face.smoothNormals.push(face.smoothNormals.shift());
             face.bothNormals.push(face.bothNormals.shift());
+            face.sideNormals.push(face.sideNormals.shift());
             face.ao.push(face.ao.shift());
             face.uv.push(face.uv.shift());              
             if (face.vertexColors)
@@ -8297,11 +9000,15 @@ class SvoxMeshGenerator {
     
     model.determineBoundsForAllGroups();
 
-    ShapeModifier.changeShape(model);
+    ShapeModifier.modify(model);
        
     Deformer.deform(model, maximumDeformCount);
     
     Deformer.warpAndScatter(model);
+    
+    model.determineBoundsForAllGroups();
+
+    SkewAndScaleAxisModifier.modify(model);
     
     NormalsCalculator.calculateNormals(model);   
     
@@ -8327,7 +9034,7 @@ class SvoxMeshGenerator {
     
     model.determineBoundsForAllGroups();
 
-    //FaceAligner.alignFaceDiagonals(model);
+    FaceAligner.alignFaceDiagonals(model);
     
     //logObjectStructure(model.voxels.getVoxel(0,0,0, '*'));
   }  
@@ -8680,7 +9387,7 @@ class SvoxMeshGenerator {
     mesh.positions.push(vert3.x, vert3.y, vert3.z); 
     mesh.positions.push(vert2.x, vert2.y, vert2.z); 
     
-    if (voxel.material.lighting === SVOX.SMOOTH || (voxel.material.lighting === SVOX.BOTH && face.smooth)) {
+    if (voxel.material.lighting === SVOX.SMOOTH || voxel.material.lighting === SVOX.SIDES || (voxel.material.lighting === SVOX.BOTH && face.smooth)) {
       // Face 1
       mesh.normals.push(norm2.x, norm2.y, norm2.z);
       mesh.normals.push(norm1.x, norm1.y, norm1.z);
@@ -8852,6 +9559,9 @@ class SvoxMeshGenerator {
       case SVOX.BOTH:
         normals = face.bothNormals;
         break;
+      case SVOX.SIDES:
+        normals = face.sideNormals;
+        break;
       default:
         normals = face.flatNormals;
         break;
@@ -8901,7 +9611,7 @@ class SvoxMeshGenerator {
     mesh.positions.push(vert3x, vert3y, vert3z); 
     mesh.positions.push(vert2x, vert2y, vert2z);  
 
-    if (shell.lighting === SVOX.SMOOTH || (shell.lighting === SVOX.BOTH && face.smooth)) {
+    if (shell.lighting === SVOX.SMOOTH || shell.lighting === SVOX.SIDES || (shell.lighting === SVOX.BOTH && face.smooth)) {
       // Face 1
       mesh.normals.push(norm2.x, norm2.y, norm2.z);
       mesh.normals.push(norm1.x, norm1.y, norm1.z);
@@ -9195,7 +9905,7 @@ class SvoxToThreeMeshConverter {
 const workerScript = `
 
 try {
-  importScripts('https://cdn.jsdelivr.net/gh/SamuelVanEgmond/Smooth-Voxels@v2.1.0/dist/smoothvoxels.min.js');
+  importScripts('https://cdn.jsdelivr.net/gh/SamuelVanEgmond/Smooth-Voxels@v2.2.0/dist/smoothvoxels.min.js');
 }
 catch {
   // For local development before the actual release 
