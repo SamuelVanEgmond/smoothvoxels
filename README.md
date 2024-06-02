@@ -40,7 +40,7 @@ Refer to the [Smooth Voxels Examples](https://smoothvoxels-examples.glitch.me/) 
 </script>
 
 <!-- Include the Smooth Voxels script -->
-<script src="https://cdn.jsdelivr.net/gh/SamuelVanEgmond/Smooth-Voxels@v2.3.0/dist/smoothvoxels.threejs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/SamuelVanEgmond/Smooth-Voxels@v2.3.0/dist/smoothvoxels.three.min.js"></script>
 
 <script type="module">
   import * as THREE from 'three';
