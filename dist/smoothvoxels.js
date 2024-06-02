@@ -31,10 +31,12 @@ SVOX.MATMATCAP   = "matcap";
 SVOX.MATTOON     = "toon";
 SVOX.MATNORMAL   = "normal";
 
-// Material resize constants
-SVOX.BOUNDS = "bounds"; // Resize the bounds to fit the model
-SVOX.FIT    = "fit";    // Resize the model to fit the bounds
-SVOX.FILL   = "fill";   // Resize the model to fill the bounds
+// Model or group resize constants
+SVOX.FILL        = "fill";      // Resize the model to fill the bounds
+SVOX.FIT         = "fit";       // Resize the model to fit the bounds
+SVOX.BOUNDS      = "bounds";    // Resize the bounds to fit the model
+SVOX.FITBOUNDS   = "fitbounds"; // Resize the model to fit the bounds, then resize the bounds to fit the model
+SVOX.NONE        = "none";      // Do not resize the model or the bounds
 
 // Material lighting constants
 SVOX.FLAT   = "flat";   // Flat shaded triangles
@@ -151,7 +153,38 @@ SVOX._AONEIGHBORS = {
   py: { top:{ x: 0, y: 1, z:-1, faces:['pz'] }, topRight:{ x: 1, y: 1, z:-1, faces:['pz','nx'] }, right:{ x: 1, y: 1, z: 0, faces:['nx'] }, bottomRight:{ x: 1, y: 1, z: 1, faces:['nx','nz'] }, bottom:{ x: 0, y: 1, z: 1, faces:['nz'] }, bottomLeft:{ x:-1, y: 1, z: 1, faces:['nz','px'] }, left:{ x:-1, y: 1, z: 0, faces:['px'] },  topLeft:{ x:-1, y: 1, z:-1, faces:['px','pz'] } },
   nz: { top:{ x: 0, y: 1, z:-1, faces:['ny'] }, topRight:{ x:-1, y: 1, z:-1, faces:['ny','px'] }, right:{ x:-1, y: 0, z:-1, faces:['px'] }, bottomRight:{ x:-1, y:-1, z:-1, faces:['px','py'] }, bottom:{ x: 0, y:-1, z:-1, faces:['py'] }, bottomLeft:{ x: 1, y:-1, z:-1, faces:['py','nx'] }, left:{ x: 1, y: 0, z:-1, faces:['nx'] },  topLeft:{ x: 1, y: 1, z:-1, faces:['nx','ny'] } },
   pz: { top:{ x: 0, y: 1, z: 1, faces:['ny'] }, topRight:{ x: 1, y: 1, z: 1, faces:['ny','nx'] }, right:{ x: 1, y: 0, z: 1, faces:['nx'] }, bottomRight:{ x: 1, y:-1, z: 1, faces:['nx','py'] }, bottom:{ x: 0, y:-1, z: 1, faces:['py'] }, bottomLeft:{ x:-1, y:-1, z: 1, faces:['py','px'] }, left:{ x:-1, y: 0, z: 1, faces:['px'] },  topLeft:{ x:-1, y: 1, z: 1, faces:['px','ny'] } }
-}
+};
+
+// Error model, cube with cross
+SVOX._ERROR = `model size=9,scale=0.05
+light intensity=0.8
+light direction=1 1 0,intensity=0.4
+material type=basic,lighting=flat,colors=A:#FFF B:#F80,ao=0.1 0.5
+group id=cross,prefab=true,scale= 1 0.5 1
+material type=basic,lighting=flat,colors=C:#F00,group=cross
+group id=nx, clone=cross,rotation=0 45 90,position=-4 0 0
+group id=px, clone=cross,rotation=0 45 90,position=4 0 0
+group id=ny, clone=cross,rotation=0 45 0,position=0 -4 0
+group id=py, clone=cross,rotation=0 45 0,position=0 4 0
+group id=nz, clone=cross,rotation=90 0 45,position=0 0 -4
+group id=pz, clone=cross,rotation=90 0 45,position=0 0 4
+voxels 10B6(7-2B)7-11B7-B-6(7A2-)7A-B7-2(2B7-B-6(7A2-)7A-B3-C3-)2B7-B-6(7A2-)7A-B-5C-2(2B7-B-6(7A2-)7A-B3-C3-)2B7-B-6(7A2-)7A-B7-11B6(7-2B)7-10B`;
+
+// Missing model, cube with questionmark
+SVOX._MISSING = `model size=9 10 9,scale=0.05
+light intensity=0.8
+light direction=1 1 0,intensity=0.4
+material type=basic,lighting=flat,colors=A:#FFF B:#F80,ao=0.1 0.5
+group id=questionmark,prefab=true,scale=0.5 0.5 0.6
+material type=basic,lighting=both,colors=C:#F00,deform=1,clamp=y,group=questionmark
+group id=nx,clone=questionmark,rotation=0 -90 90,position=-4 0 0
+group id=px,clone=questionmark,rotation=0 90 -90,position=4 0 0
+group id=ny,clone=questionmark,rotation=180 0 0,position=0 -4 0
+group id=py,clone=questionmark,rotation=0 0 0,position=0 4 0
+group id=nz,clone=questionmark,rotation=90 180 0,position=0 0 -4
+group id=pz,clone=questionmark,rotation=90 0 0,position=0 0 4
+voxels 10B6(7-2B)7-10B2-4C3-2(B7-B-6(7A2-)7A-B7-B-2(2C2-))B7-B-6(7A2-)7A-B7-B4-2C3-2(B7-B-6(7A2-)7A-B7-B3-2C4-)B7-B-6(7A2-)7A-B7-B9-B7-B-6(7A2-)7A-B7-B3-2C4-10B6(7-2B)7-10B3-2C4-`;
+
 
 // Logging functions
 
@@ -174,7 +207,7 @@ SVOX.htmlEscape = function (str) {
 SVOX.logError = function(error) {
   // Remove the __playground model name
   let errorText = error.name + ": " + error.message.replace('(__playground)', '').trim();
-  let errorElement = document.getElementById('svoxerrors');
+  let errorElement = self.document?.getElementById('svoxerrors');
   if (errorElement)
     errorElement.innerHTML += SVOX.htmlEscape(errorText) + '<br>';
   console.error(`SVOX ${errorText}`);    
@@ -188,7 +221,7 @@ SVOX.logError = function(error) {
 SVOX.logWarning = function(warning, modelName) {
   let warningText = warning.name + ": " + warning.message.replace('(__playground)', '').trim();
   if (this.showWarnings) {
-    let warningElement = document.getElementById('svoxwarnings');
+    let warningElement = self.document?.getElementById('svoxwarnings');
     if (warningElement)
       warningElement.innerHTML += SVOX.htmlEscape(warningText) + '<br>';
   }
@@ -224,43 +257,57 @@ class Planar {
     if (!value)
       return undefined;
     
+    let planar = null;
+    
     if (typeof value === 'object') {
-      return {
+      planar = {
         nx: value.nx,
+        gx: value.gx,  
          x: value.x,
+        lx: value.lx,
         px: value.px,
         ny: value.ny,
+        gy: value.gy,  
          y: value.y,
+        ly: value.ly,
         py: value.py,
         nz: value.nz,
+        gz: value.gz,  
          z: value.z,
-        pz: value.pz,
-        active: value.nx || value.x || value.px || value.ny || value.y || value.py || value.nz || value.z || value.pz
-      };      
+        lz: value.lz,
+        pz: value.pz
+      };
     }
-    
-    value = ' ' + (value || '').toLowerCase();
-      
-    if (value !== ' ' && !/^(?!$)(\s+(?:none|-x|x|\+x|-y|y|\+y|-z|z|\+z|\s))+\s*$/.test(value)) {
-      throw {
-        name: 'SyntaxError',
-        message: `Planar expression '${value}' is only allowed to be 'none' or contain -x x +x -y y +y -z z +z.`
-      };  
+    else {    
+      value = ' ' + (value || '').toLowerCase();
+      if (value !== ' ' && !/^(?!$)(\s+(?:none|-x|>x|x|<x|\+x|-y|>y|y|<y|\+y|-z|>z|z|<z|\+z|\s))+\s*$/.test(value)) {
+        throw {
+          name: 'SyntaxError',
+          message: `Planar expression '${value}' is only allowed to be 'none' or contain -x >x x <x +x -y >y y <y +y -z >z z <z +z.`
+        };  
+      }
+
+      let none = value.includes('none');
+      planar = {
+        nx: !none && value.includes('-x'),
+        gx: !none && value.includes('>x'),
+         x: !none && value.includes(' x'),
+        lx: !none && value.includes('<x'),
+        px: !none && value.includes('+x'),
+        ny: !none && value.includes('-y'),
+        gy: !none && value.includes('>y'),
+         y: !none && value.includes(' y'),
+        ly: !none && value.includes('<y'),
+        py: !none && value.includes('+y'),
+        nz: !none && value.includes('-z'),
+        gz: !none && value.includes('>z'),
+         z: !none && value.includes(' z'),
+        lz: !none && value.includes('<z'),
+        pz: !none && value.includes('+z')
+      };
     }
-    
-    let none = value.includes('none');
-    let planar = {
-      nx: !none && value.includes('-x'),
-       x: !none && value.includes(' x'),
-      px: !none && value.includes('+x'),
-      ny: !none && value.includes('-y'),
-       y: !none && value.includes(' y'),
-      py: !none && value.includes('+y'),
-      nz: !none && value.includes('-z'),
-       z: !none && value.includes(' z'),
-      pz: !none && value.includes('+z')
-    };
-    planar.active = planar.nx || planar.x || planar.px || planar.ny || planar.y || planar.py || planar.nz || planar.z || planar.pz;
+
+    this._setActive(planar);
     return planar;
   }
   
@@ -274,12 +321,10 @@ class Planar {
       return undefined;
    
     let result = '';
-    if (planar.nx || planar.x || planar.px ||
-        planar.ny || planar.y || planar.py ||
-        planar.nz || planar.z || planar.pz ) {
-      result +=  (planar.nx ? ' -x' : '') + (planar.x ? ' x' : '') + (planar.px ? ' +x' : '')
-               + (planar.ny ? ' -y' : '') + (planar.y ? ' y' : '') + (planar.py ? ' +y' : '')
-               + (planar.nz ? ' -z' : '') + (planar.z ? ' z' : '') + (planar.pz ? ' +z' : '');
+    if (planar.active) {
+      result +=  (planar.nx ? ' -x' : '') + (planar.gx ? ' >x' : '') + (planar.x ? ' x' : '') + (planar.lx ? ' <x' : '') + (planar.px ? ' +x' : '')
+               + (planar.ny ? ' -y' : '') + (planar.gy ? ' >y' : '') + (planar.y ? ' y' : '') + (planar.ly ? ' <y' : '') + (planar.py ? ' +y' : '')
+               + (planar.nz ? ' -z' : '') + (planar.gz ? ' >z' : '') + (planar.z ? ' z' : '') + (planar.lz ? ' <z' : '') + (planar.pz ? ' +z' : '');
     }
     else {
       result += 'none';
@@ -304,19 +349,38 @@ class Planar {
       return planar1;
     if (planar1 === planar2)
       return planar1;
+    
     let planar = {
       nx: planar1.nx || planar2.nx,
+      gx: planar1.gx || planar2.gx,
        x: planar1.x  || planar2.x,
+      lx: planar1.lx || planar2.lx,
       px: planar1.px || planar2.px,
       ny: planar1.ny || planar2.ny,
+      gy: planar1.gy || planar2.gy,
        y: planar1.y  || planar2.y,
+      ly: planar1.ly || planar2.ly,
       py: planar1.py || planar2.py,
       nz: planar1.nz || planar2.nz,
+      gz: planar1.gz || planar2.gz,
        z: planar1.z  || planar2.z,
+      lz: planar1.lz || planar2.lz,
       pz: planar1.pz || planar2.pz
     };
-    planar.active = planar.nx || planar.x || planar.px || planar.ny || planar.y || planar.py || planar.nz || planar.z || planar.pz;
+    
+    this._setActive(planar);
     return planar;
+  }
+
+  /**
+   * Sets the active member of a planar object
+   * @param {object} planar The planar object.
+   * @returns undefined
+   */ 
+  static _setActive(planar) {
+    planar.active = planar.nx || planar.gx || planar.x || planar.lx || planar.px || 
+                    planar.ny || planar.gy || planar.y || planar.ly || planar.py || 
+                    planar.nz || planar.gz || planar.z || planar.lz || planar.pz;
   }
 
 }
@@ -326,18 +390,7 @@ class Planar {
 // =====================================================
 
 class BoundingBox {
-
-  get size() { 
-    if (this.minX > this.maxX)
-      return { x:0, y:0, z:0};
-    else
-      return {
-        x: this.maxX - this.minX + 1,
-        y: this.maxY - this.minY + 1,
-        z: this.maxZ - this.minZ + 1
-      };
-  }
-  
+ 
   constructor(copyFrom) {
     if (copyFrom)
       this.copy(copyFrom);
@@ -376,6 +429,23 @@ class BoundingBox {
     this.maxZ = boundingBox.maxZ;
   }
   
+  get size() { 
+    if (this.isValid()) {
+      return {
+        x: this.maxX - this.minX + 1,
+        y: this.maxY - this.minY + 1,
+        z: this.maxZ - this.minZ + 1
+      };
+    }
+    else {
+      return { x:0, y:0, z:0 };
+    }
+  }
+  
+  get sizeX() { return (this.maxX < this.minX) ? 0 : this.maxX - this.minX + 1; };
+  get sizeY() { return (this.maxY < this.minY) ? 0 : this.maxY - this.minY + 1; };
+  get sizeZ() { return (this.maxZ < this.minZ) ? 0 : this.maxZ - this.minZ + 1; };  
+  
   getCenter() {
     if (this.isValid()) {
       return { 
@@ -388,10 +458,6 @@ class BoundingBox {
       return { x:0, y:0, z:0 };
     }
   }
-  
-  get sizeX() { return this.maxX - this.minX };
-  get sizeY() { return this.maxY - this.minY };
-  get sizeZ() { return this.maxZ - this.minZ };
         
   // End of class BoundingBox
 }
@@ -435,22 +501,13 @@ class VoxelMatrix {
   get maxY()  { return this.bounds.maxY; }
   get maxZ()  { return this.bounds.maxZ; }
   
-  get size() { 
-    if (this.minX > this.maxX)
-      return { x:0, y:0, z:0};
-    else
-      return {
-        x: this.maxX - this.minX + 1,
-        y: this.maxY - this.minY + 1,
-        z: this.maxZ - this.minZ + 1
-      };
-  }
+  get size() { return this.bounds.size; }
  
   get count() { return this._count; }
   
   constructor() {
     this.bounds = new BoundingBox();
-    this._voxels = {};
+    this._groups = {};
     this._count = 0;
     this.prepareForWrite();
   }
@@ -461,13 +518,15 @@ class VoxelMatrix {
       voxel.reset;
     }, this, true);
     this.bounds.reset();
-    this._voxels = {};
+    this._groups = {};
     this._count = 0;
   }
   
   setVoxel(x, y, z, voxel) {
     if (!(voxel instanceof Voxel))
      throw new Error("setVoxel requires a Voxel set to an existing color of a material of this model.");
+    if (x<0 || y<0 || z<0)
+     throw new Error("setVoxel must have positive values for x, y and z.");
     
     this.bounds.set(x, y, z);
     voxel.material.bounds.set(x, y, z);
@@ -477,17 +536,17 @@ class VoxelMatrix {
     voxel.z = z;
     
     // Create the group if it does not yet exist
-    let voxels = this._voxels[voxel.group.id];
+    let voxels = this._groups[voxel.group.id];
     if (!voxels) {
-      voxels = this._voxels[voxel.group.id] = [];
+      voxels = this._groups[voxel.group.id] = [];
     }    
     
-    let matrixId = ((x+1024) >> 4)+(((y+1024) >> 4)<<10)+(((z+1024)>>4)<<20);
+    let matrixId = (x >> 4)+((y >> 4)<<10)+((z>>4)<<20);
     let matrix = voxels[matrixId];
     if (!matrix) {
       matrix = voxels[matrixId] = [];
     }
-    let index = ((x+1024) & 15) + (((y+1024) & 15)<<4) + (((z+1024) & 15)<<8);
+    let index = (x & 15) + ((y & 15)<<4) + ((z & 15)<<8);
     if (!matrix[index]) {
       this._count++;
     }
@@ -499,12 +558,12 @@ class VoxelMatrix {
       throw { name:'Error', message:'clearVoxel(x, y, z, groupId) must be called with a groupId' };
     } 
     
-    let voxels = this._voxels[groupId];
+    let voxels = this._groups[groupId];
     if (voxels) {
-      let matrixId = ((x+1024) >> 4)+(((y+1024) >> 4)<<10)+(((z+1024)>>4)<<20);
+      let matrixId = (x >> 4)+((y >> 4)<<10)+((z>>4)<<20);
       let matrix = voxels[matrixId];
       if (matrix) {
-        let index = ((x+1024) & 15) + (((y+1024) & 15)<<4) + (((z+1024) & 15)<<8);
+        let index = (x & 15) + ((y & 15)<<4) + ((z & 15)<<8);
         if (matrix[index]) {
           this._count--;
           matrix[index] = null;
@@ -518,12 +577,12 @@ class VoxelMatrix {
       throw { name:'Error', message:'getVoxel(x, y, z, groupId) must be called with a groupId' };
     } 
     
-    let voxels = this._voxels[groupId];
+    let voxels = this._groups[groupId];
     if (voxels) {
-      let matrixId = ((x+1024) >> 4)+(((y+1024) >> 4)<<10)+(((z+1024)>>4)<<20);
+      let matrixId = (x >> 4)+((y >> 4)<<10)+((z >> 4)<<20);
       let matrix = voxels[matrixId];
       if (matrix) {
-        let index = ((x+1024) & 15) + (((y+1024) & 15)<<4) + (((z+1024) & 15)<<8);
+        let index = (x & 15) + ((y & 15)<<4) + ((z & 15)<<8);
         let voxel = matrix[index];
         if (voxel)
           return voxel;
@@ -533,10 +592,10 @@ class VoxelMatrix {
   }
   
   getVoxelForAnyGroup(x, y, z) {
-    let matrixId = ((x+1024) >> 4)+(((y+1024) >> 4)<<10)+(((z+1024)>>4)<<20);
-    let index = ((x+1024) & 15) + (((y+1024) & 15)<<4) + (((z+1024) & 15)<<8);
-    for (const groupId in this._voxels) {
-      let voxel = this._voxels[groupId]?.[matrixId]?.[index];
+    let matrixId = (x >> 4)+((y >> 4)<<10)+((z >> 4)<<20);
+    let index = (x & 15) + ((y & 15)<<4) + ((z & 15)<<8);
+    for (const groupId in this._groups) {
+      let voxel = this._groups[groupId]?.[matrixId]?.[index];
       if (voxel)
         return voxel;
     }
@@ -545,11 +604,11 @@ class VoxelMatrix {
       
   forEach(func, thisArg, visibleOnly = true) {
     let param = [];
-    for (const groupId in this._voxels) {
-      let voxels = this._voxels[groupId];
-      for (let matrixId in voxels) {
+    for (const groupId in this._groups) {
+      let voxels = this._groups[groupId];
+      for (const matrixId in voxels) {
         let matrix = voxels[matrixId];
-        for (let index in matrix) {
+        for (const index in matrix) {
           let voxel = matrix[index];
           if (voxel && (!visibleOnly || voxel.visible)) {
             param[0] = voxel;
@@ -563,10 +622,10 @@ class VoxelMatrix {
   
   forEachInGroup(groupId, func, thisArg, visibleOnly = true) {
     let param = [];
-    let voxels = this._voxels[groupId];
-    for (let matrixId in voxels) {
+    let voxels = this._groups[groupId];
+    for (const matrixId in voxels) {
       let matrix = voxels[matrixId];
-      for (let index in matrix) {
+      for (const index in matrix) {
         let voxel = matrix[index];
         if (voxel && (!visibleOnly || voxel.visible)) {
           param[0] = voxel;
@@ -582,7 +641,7 @@ class VoxelMatrix {
     for (let z = this.bounds.minZ; z <= this.bounds.maxZ; z++) {
       for (let y = this.bounds.minY; y <= this.bounds.maxY; y++) {
         for (let x = this.bounds.minX; x <= this.bounds.maxX; x++) {
-          for (const groupId in this._voxels) {         
+          for (const groupId in this._groups) {         
             param[0] = this.getVoxel(x,y,z, groupId);
             if (param[0]) {
               let stop = func.apply(thisArg, param);
@@ -769,9 +828,9 @@ class VertexMatrix {
     let result = { x:false, y:false, z:false};
     if (planar) {
       // Note bounds are in voxel coordinates and vertices add from 0 0 0 to 1 1 1
-      result.x = planar.x || (planar.nx && vx < bounds.minX + 0.5) || (planar.px && vx > bounds.maxX + 0.5);
-      result.y = planar.y || (planar.ny && vy < bounds.minY + 0.5) || (planar.py && vy > bounds.maxY + 0.5);
-      result.z = planar.z || (planar.nz && vz < bounds.minZ + 0.5) || (planar.pz && vz > bounds.maxZ + 0.5);
+      result.x = planar.x || (planar.nx && vx < bounds.minX + 0.5) || (planar.px && vx > bounds.maxX + 0.5) || ((planar.gx || planar.lx) && (vx > bounds.minX + 0.5 && vx < bounds.maxX + 0.5));
+      result.y = planar.y || (planar.ny && vy < bounds.minY + 0.5) || (planar.py && vy > bounds.maxY + 0.5) || ((planar.gy || planar.ly) && (vy > bounds.minY + 0.5 && vy < bounds.maxY + 0.5));
+      result.z = planar.z || (planar.nz && vz < bounds.minZ + 0.5) || (planar.pz && vz > bounds.maxZ + 0.5) || ((planar.gz || planar.lz) && (vz > bounds.minZ + 0.5 && vz < bounds.maxZ + 0.5));
     }
     
     return result;
@@ -908,7 +967,7 @@ class GroupList {
     let group = this._groups.find(g => g.id === id);
     if (!group) {
       throw {
-        name: 'SyntaxError',
+        name: 'ModelError',
         message: `Group with id '${id}' does not exist`,
       };
     }        
@@ -936,7 +995,7 @@ class GroupList {
 }
 
 // =====================================================
-// ../smoothvoxels/model/materiallist.js
+// ../smoothvoxels/model/color.js
 // =====================================================
 
 const clamp = (num, min, max) => Math.min(Math.max(num, min), max);
@@ -1056,6 +1115,10 @@ class Color {
     return this._color;
   }
 }
+
+// =====================================================
+// ../smoothvoxels/model/materiallist.js
+// =====================================================
 
 // =====================================================
 // class BaseMaterial
@@ -1270,6 +1333,24 @@ class Model {
     this.materials = new MaterialList();
     this.voxels = new VoxelMatrix();
     this.vertices = new VertexMatrix(this);  
+    
+    // Add the model itself as group '*'
+    this._createModelGroup();
+    
+    if (settings.randomSeed == undefined) {
+      // Just use standard Math.random (slightly faster)
+      this.random = Math.random;
+      let noiseObject = new Noise(this.random);
+      this.noise = noiseObject.noise.bind(noiseObject);      
+    }
+    else {
+      // Just XorShiftRandom which allows for a seed to ensure stability when animating
+      let randomSeed = settings.randomSeed === 0 ? 5408.5408 : settings.randomSeed;
+      let randomObject = new XorShiftRandom(randomSeed);
+      this.random = randomObject.random.bind(randomObject);
+      let noiseObject = new Noise(this.random);
+      this.noise = noiseObject.noise.bind(noiseObject);
+    }
   }
 
   get settings()            { return this._settings;                     }
@@ -1296,15 +1377,36 @@ class Model {
   get scaleZY()             { return this._settings.scaleZY;             }  
   get scaleXZ()             { return this._settings.scaleXZ;             }  
   get scaleYZ()             { return this._settings.scaleYZ;             }  
+  get smoothScaleYX()       { return this._settings.smoothScaleYX;       }  
+  get smoothScaleZX()       { return this._settings.smoothScaleZX;       }  
+  get smoothScaleXY()       { return this._settings.smoothScaleXY;       }  
+  get smoothScaleZY()       { return this._settings.smoothScaleZY;       }  
+  get smoothScaleXZ()       { return this._settings.smoothScaleXZ;       }  
+  get smoothScaleYZ()       { return this._settings.smoothScaleYZ;       }  
   get rotateX()             { return this._settings.rotateX;             }  
   get rotateY()             { return this._settings.rotateY;             }  
   get rotateZ()             { return this._settings.rotateZ;             }  
+  get smoothRotateX()       { return this._settings.smoothRotateX;       }  
+  get smoothRotateY()       { return this._settings.smoothRotateY;       }  
+  get smoothRotateZ()       { return this._settings.smoothRotateZ;       }  
   get translateYX()         { return this._settings.translateYX;         }  
   get translateZX()         { return this._settings.translateZX;         }  
   get translateXY()         { return this._settings.translateXY;         }  
   get translateZY()         { return this._settings.translateZY;         }  
   get translateXZ()         { return this._settings.translateXZ;         }  
   get translateYZ()         { return this._settings.translateYZ;         }  
+  get smoothTranslateYX()   { return this._settings.smoothTranslateYX;   }  
+  get smoothTranslateZX()   { return this._settings.smoothTranslateZX;   }  
+  get smoothTranslateXY()   { return this._settings.smoothTranslateXY;   }  
+  get smoothTranslateZY()   { return this._settings.smoothTranslateZY;   }  
+  get smoothTranslateXZ()   { return this._settings.smoothTranslateXZ;   }  
+  get smoothTranslateYZ()   { return this._settings.smoothTranslateYZ;   }  
+  get bendYX()              { return this._settings.bendYX;              }  
+  get bendZX()              { return this._settings.bendZX;              }  
+  get bendXY()              { return this._settings.bendXY;              }  
+  get bendZY()              { return this._settings.bendZY;              }  
+  get bendXZ()              { return this._settings.bendXZ;              }  
+  get bendYZ()              { return this._settings.bendYZ;              }  
   get ao()                  { return this._settings.ao;                  }
   get quickAo()             { return this._settings.quickAo;             }
   get aoSides()             { return this._settings.aoSides;             }
@@ -1313,13 +1415,61 @@ class Model {
   get data()                { return this._settings.data;                }
   get shell()               { return this._settings.shell;               }
   get improveNonManifold()  { return this._settings.improveNonManifold;  }
-      
-  prepareForWrite(countColors) {
+    
+  /**
+  / Add the model itself as group '*'
+  / @param {object} model The model itself
+  */
+  _createModelGroup() {
+    this.groups.createGroup( { id:'*', 
+                                scale: this.scale, 
+                                shape: this.shape,
+                                scaleYX: this.scaleYX,                           
+                                scaleZX: this.scaleZX,                           
+                                scaleXY: this.scaleXY,                           
+                                scaleZY: this.scaleZY,                           
+                                scaleXZ: this.scaleXZ,                           
+                                scaleYZ: this.scaleYZ,     
+                                smoothScaleYX: this.smoothScaleYX,                           
+                                smoothScaleZX: this.smoothScaleZX,                           
+                                smoothScaleXY: this.smoothScaleXY,                           
+                                smoothScaleZY: this.smoothScaleZY,                           
+                                smoothScaleXZ: this.smoothScaleXZ,                           
+                                smoothScaleYZ: this.smoothScaleYZ,     
+                                rotateX: this.rotateX,
+                                rotateY: this.rotateY,
+                                rotateZ: this.rotateZ,
+                                smoothRotateX: this.smoothRotateX,
+                                smoothRotateY: this.smoothRotateY,
+                                smoothRotateZ: this.smoothRotateZ,
+                                translateYX: this.translateYX,                           
+                                translateZX: this.translateZX,                           
+                                translateXY: this.translateXY,                           
+                                translateZY: this.translateZY,                           
+                                translateXZ: this.translateXZ,                           
+                                translateYZ: this.translateYZ,
+                                smoothTranslateYX: this.smoothTranslateYX,                           
+                                smoothTranslateZX: this.smoothTranslateZX,                           
+                                smoothTranslateXY: this.smoothTranslateXY,                           
+                                smoothTranslateZY: this.smoothTranslateZY,                           
+                                smoothTranslateXZ: this.smoothTranslateXZ,                           
+                                smoothTranslateYZ: this.smoothTranslateYZ,
+                                bendYX: this.bendYX,                           
+                                bendZX: this.bendZX,                           
+                                bendXY: this.bendXY,                           
+                                bendZY: this.bendZY,                           
+                                bendXZ: this.bendXZ,                           
+                                bendYZ: this.bendYZ,                                    
+                                origin: this.origin, 
+                                resize: this.resize, 
+                                rotation: this.rotation, 
+                                position: this.position
+                              } );       
+  }
+  
+  prepareForWrite(countColors = true) {
     this.settings.size = this.size;
     
-    if (countColors !== false)  // undefined
-      countColors = true;
-
     this.materials.forEach(function(material) {
       // Reset all material bounding boxes
       material.bounds.reset();
@@ -1355,9 +1505,22 @@ class Model {
     this.voxels.prepareForWrite();
     
     if (countColors) {
+      // Count the colors used in voxels
       this.voxels.forEach(function countColors(voxel) {
         voxel.color.count++;
       });
+      
+      // Count the colors swapped (they could not be used, but we don't want to clone all groups to find out)
+      this.groups.forEach(function countSwapColors(group) {
+        if (group.swap) {
+          for (let s=0; s<group.swap.length; s++) {
+            let color = this.colors[group.swap[s].to]
+            if (color) {
+              color.count++;
+            }
+          }
+        }
+      }, this);
     }
     
     this._determineColorIds();
@@ -1425,7 +1588,6 @@ class Model {
     this.groups.forEach(function(group) {
       group.bounds.reset();
       group.vertexBounds.reset();
-      group.vertexOffset  = null;
       group.vertexRescale = null;
     }, this);
     
@@ -1470,18 +1632,13 @@ class Model {
       
       if (prepareForResize) {
         
-        if (group.resize === SVOX.BOUNDS) {
-          // The bounds were determined above
-          group.vertexRescale = { x:1, y:1, z:1 };
-        } 
-        else if (group.resize === SVOX.FIT) {
+        if (group.resize === SVOX.FIT) {
           // Resize the actual model to fit the original voxel bounds
           let scaleX = (group.bounds.maxX-group.bounds.minX)/(group.vertexBounds.maxX-group.vertexBounds.minX);
           let scaleY = (group.bounds.maxY-group.bounds.minY)/(group.vertexBounds.maxY-group.vertexBounds.minY);
           let scaleZ = (group.bounds.maxZ-group.bounds.minZ)/(group.vertexBounds.maxZ-group.vertexBounds.minZ);
           let scale = Math.min(scaleX, scaleY, scaleZ);
           group.vertexRescale = { x:scale, y:scale, z:scale };
-          group.vertexBounds.copy(group.bounds);
         }
         else if (group.resize === SVOX.FILL) {
           // Resize the actual model to fill the original voxel bounds in all 3 axis directions
@@ -1490,32 +1647,55 @@ class Model {
             y: (group.bounds.maxY-group.bounds.minY)/(group.vertexBounds.maxY-group.vertexBounds.minY),
             z: (group.bounds.maxZ-group.bounds.minZ)/(group.vertexBounds.maxZ-group.vertexBounds.minZ)
           }
-          group.vertexBounds.copy(group.bounds);
         }
-        else {
+        else if (group.resize === SVOX.FITBOUNDS) {
+          // Resize the actual model to fit the original voxel bounds
+          let scaleX = (group.bounds.maxX-group.bounds.minX)/(group.vertexBounds.maxX-group.vertexBounds.minX);
+          let scaleY = (group.bounds.maxY-group.bounds.minY)/(group.vertexBounds.maxY-group.vertexBounds.minY);
+          let scaleZ = (group.bounds.maxZ-group.bounds.minZ)/(group.vertexBounds.maxZ-group.vertexBounds.minZ);
+          let scale = Math.min(scaleX, scaleY, scaleZ);
+          group.vertexRescale = { x:scale, y:scale, z:scale };
+          
+          // Resize the bounds to fit the resized model
+          let maxX = (group.vertexBounds.maxX-group.vertexBounds.minX) * scale;
+          let maxY = (group.vertexBounds.maxY-group.vertexBounds.minY) * scale;
+          let maxZ = (group.vertexBounds.maxZ-group.vertexBounds.minZ) * scale;
+          group.bounds.reset();
+          group.bounds.set(0, 0, 0);
+          group.bounds.set(maxX, maxY, maxZ);
+        }
+        else if (group.resize === SVOX.BOUNDS) {
+          // Resize the bounds, not the model
+          group.bounds.copy(group.vertexBounds);
+          group.vertexRescale = { x:1, y:1, z:1 };
+        }
+        else { // group.resize === SVOX.NONE
           // Don't resize the model, and keep the original voxel bounds
           group.vertexRescale = { x:1, y:1, z:1 };
-          group.vertexBounds.copy(group.bounds);
+          group.vertexBounds.copy(group.bounds);          
         }
-
-        let offsetX = (group.vertexRescale.x * (group.vertexBounds.maxX - group.vertexBounds.minX))/2;
-        let offsetY = (group.vertexRescale.y * (group.vertexBounds.maxY - group.vertexBounds.minY))/2;
-        let offsetZ = (group.vertexRescale.z * (group.vertexBounds.maxZ - group.vertexBounds.minZ))/2;      
-
+        
+        let halfX = (group.bounds.maxX - group.bounds.minX) / 2;
+        let halfY = (group.bounds.maxY - group.bounds.minY) / 2;
+        let halfZ = (group.bounds.maxZ - group.bounds.minZ) / 2;
+        
         // Determine the origin offset
-        group.originOffset = { x: 0, y: 0, z: 0 };
+        group.originOffset = { x:0, y:0, z:0 };
         if (group.origin) {
-          if (group.origin.nx) group.originOffset.x =  offsetX;
-          if (group.origin.px) group.originOffset.x = -offsetX;
-          if (group.origin.ny) group.originOffset.y =  offsetY;
-          if (group.origin.py) group.originOffset.y = -offsetY;
-          if (group.origin.nz) group.originOffset.z =  offsetZ;
-          if (group.origin.pz) group.originOffset.z = -offsetZ;
+          if (group.origin.nx) group.originOffset.x =  halfX;
+          if (group.origin.px) group.originOffset.x = -halfX;
+          if (group.origin.ny) group.originOffset.y =  halfY;
+          if (group.origin.py) group.originOffset.y = -halfY;
+          if (group.origin.nz) group.originOffset.z =  halfZ;
+          if (group.origin.pz) group.originOffset.z = -halfZ;
         }
         
         if (Math.abs(group.originOffset.x) < 0.00001) group.originOffset.x = 0;
         if (Math.abs(group.originOffset.y) < 0.00001) group.originOffset.y = 0;
         if (Math.abs(group.originOffset.z) < 0.00001) group.originOffset.z = 0;      
+
+        group.vertexCenter = group.vertexBounds.getCenter();
+        group.vertexBounds.copy(group.bounds);
       }
       
     }, this);
@@ -1561,9 +1741,9 @@ class PropertyParser {
      * @returns {string} The name if it is valid
      * @throws {SyntaxError} Invalid name
      */
-    static parseName(name, defaultValue, value) {
+    static parseNameNew(def, value) {
       if (!value) {
-        return defaultValue;
+        return def.defaultValue;
       }
       else if (value === '*') {
         // Special case for the default group Id
@@ -1575,7 +1755,7 @@ class PropertyParser {
             
       throw {
         name: 'SyntaxError',
-        message: `Invalid name '${value}' for ${name}'.`
+        message: `Invalid name '${value}' for ${def.name}'.`
       };
     }
   
@@ -1587,17 +1767,17 @@ class PropertyParser {
      * @returns {string} A boolean if the value is true or false
      * @throws {SyntaxError} Invalid name
      */
-    static parseBoolean(name, defaultValue, value) {
+    static parseBooleanNew(def, value) {
       if (typeof value === 'boolean') return value;
       
-      let parseValue = value || `${defaultValue}`;
+      let parseValue = value || `${def.defaultValue}`;
       if (parseValue === 'undefined') return undefined;
       if (parseValue === 'true')  return true;
       if (parseValue === 'false') return false;
       
       throw {
         name: 'SyntaxError',
-        message: `Invalid boolean value '${value}' for '${name}'. Use true or false.`
+        message: `Invalid boolean value '${value}' for '${def.name}'. Use true or false.`
       };
     }
   
@@ -1610,18 +1790,18 @@ class PropertyParser {
      * @returns {string} The value if it is one of the allowed values
      * @throws {SyntaxError} Invalid value for the allowed values
      */
-    static parseEnum(name, allowedValues, defaultValue, value) { 
-      let parseValue = value || defaultValue;
+    static parseEnumNew(def, value) { 
+      let parseValue = value || def.defaultValue;
       if (parseValue === undefined)
         return undefined;
-      if (allowedValues.includes(parseValue))
+      if (def.values.includes(parseValue))
         return parseValue;
       
       throw {
         name: 'SyntaxError',
-        message: `Invalid value '${value}' for '${name}'. Allowed values: ${allowedValues.join(', ')}.`
+        message: `Invalid value '${value}' for '${def.name}'. Allowed values: ${def.values.join(', ')}.`
       };
-    }
+    }  
   
     /**
      * Parses and checks a color string
@@ -1631,8 +1811,8 @@ class PropertyParser {
      * @returns {Color} A color if the value is valid
      * @throws {SyntaxError} Invalid value
      */
-    static parseColor(name, defaultValue, value) { 
-      let parseValue = value || defaultValue;
+    static parseColorNew(def, value) { 
+      let parseValue = value || def.defaultValue;
       try {
         if (parseValue)
           return Color.fromHex(parseValue);
@@ -1642,10 +1822,10 @@ class PropertyParser {
       catch (ex) {
         throw {
           name: ex.name,
-          message: `Invalid value for '${name}'. ${ex.message}`
+          message: `Invalid value for '${def.name}'. ${ex.message}`
         };                
       }
-    }
+    }  
   
     /**
      * Parses and checks a color id
@@ -1654,7 +1834,7 @@ class PropertyParser {
      * @returns {ColorId} A color Id if the value is valid
      * @throws {SyntaxError} Invalid value
      */
-    static parseColorId(name, value) { 
+    static parseColorIdNew(def, value) { 
       if (value) {
         if (/^[A-Z][a-z]*$/.test(value)) {
           return value;
@@ -1662,32 +1842,33 @@ class PropertyParser {
         else {            
           throw {
             name: 'SyntaxError',
-            message: `Invalid color Id for '${name}'.`
+            message: `Invalid color Id for '${def.name}'.`
           };                
         }
       }
       else
         return undefined;
-    }
+    }  
   
     /**
      * Parses a planar point expression, i.e. model origin
      * @param {string} name The name of the field
      * @param {string} defaultValue The default planar expression for an optional field
-     * @param {string} value The string value of the field in the form -x x +x -y y +y -z z +z
+     * @param {string} value The string value of the field in the form -x >x x <x +x -y >y y <y +y -z >z z <z +z
      * @returns {Color} A planar struct if the value is valid
      * @throws {SyntaxError} Invalid value
      */
-    static parsePlanarPoint(name, defaultValue, value) {
-      let planar = Planar.parse(value || defaultValue);
+    static parsePlanarPointNew(def, value) {
+      let planar = Planar.parse(value || def.defaultValue);
       
       if (planar) {      
         if (((planar.nx ? 1 : 0) + (planar.x ? 1 : 0) + (planar.px ? 1 : 0) > 1) ||
             ((planar.ny ? 1 : 0) + (planar.y ? 1 : 0) + (planar.py ? 1 : 0) > 1) ||
-            ((planar.nz ? 1 : 0) + (planar.z ? 1 : 0) + (planar.pz ? 1 : 0) > 1)) {
+            ((planar.nz ? 1 : 0) + (planar.z ? 1 : 0) + (planar.pz ? 1 : 0) > 1) ||
+            planar.gx || planar.lx || planar.gy || planar.ly || planar.gz || planar.lz) {
           throw {
             name: 'SyntaxError',
-            message: `Invalid value '${value}' for '${name}'.`
+            message: `Invalid value '${value}' for '${def.name}'.`
           };                          
         }  
       }
@@ -1699,17 +1880,17 @@ class PropertyParser {
      * Parses a planar planes expression, i.e. clamp, flatten, skip.
      * @param {string} name The name of the field
      * @param {string} defaultValue The default planar expression for an optional field
-     * @param {string} value The string value of the field in the form -x x +x -y y +y -z z +z
+     * @param {string} value The string value of the field in the form -x >x x <x +x -y >y y <y +y -z >z z <z +z
      * @returns {Color} A planar struct if the value is valid
      * @throws {SyntaxError} Invalid value
      */
-    static parsePlanarPlanes(name, defaultValue, value) {
-      let planar = Planar.parse(value || defaultValue);
+    static parsePlanarPlanesNew(def, value) {
+      let planar = Planar.parse(value || def.defaultValue);
 
       if (planar) {
-        if (planar.x) { planar.nx = false; planar.px = false; }
-        if (planar.y) { planar.ny = false; planar.py = false; }
-        if (planar.z) { planar.nz = false; planar.pz = false; }
+        if (planar.x) { planar.nx = false; planar.gx = false; planar.lx = false; planar.px = false; }
+        if (planar.y) { planar.ny = false; planar.gy = false; planar.ly = false; planar.py = false; }
+        if (planar.z) { planar.nz = false; planar.gz = false; planar.lz = false; planar.pz = false; }
       }
       
       return planar;
@@ -1723,10 +1904,17 @@ class PropertyParser {
      * @returns {Color} A planar struct if the value is valid
      * @throws {SyntaxError} Invalid value
      */
-    static parsePlanarSides(name, defaultValue, value) {
-      let planar = Planar.parse(value || defaultValue);
+    static parsePlanarSidesNew(def, value) {
+      let planar = Planar.parse(value || def.defaultValue);
       
       if (planar) {
+        if (planar.gx || planar.lx || planar.gy || planar.ly || planar.gz || planar.lz) {
+          throw {
+            name: 'SyntaxError',
+            message: `Invalid value '${value}' for '${def.name}'.`
+          };                          
+        } 
+        
         if (planar.x) { planar.x = false; planar.nx = true; planar.px = true; }
         if (planar.y) { planar.y = false; planar.ny = true; planar.py = true; }
         if (planar.z) { planar.z = false; planar.nz = true; planar.pz = true; }
@@ -1743,14 +1931,14 @@ class PropertyParser {
      * @returns {string} A float if the value is valid
      * @throws {SyntaxError} Invalid value
      */
-    static parseFloat(name, defaultValue, value) {
+    static parseFloatNew(def, value) {
       try {
-        return PropertyParser._parseFloatPart(value, defaultValue);
+        return PropertyParser._parseFloatPart(value, def.defaultValue);
       }
       catch(ex) {
         throw {
           name: 'SyntaxError',
-          message: `Invalid value '${value}' for '${name}'.`
+          message: `Invalid value '${value}' for '${def.name}'.`
         };
       }
     }
@@ -1765,7 +1953,7 @@ class PropertyParser {
      * @returns {string} A struct { float1, float2 }
      * @throws {SyntaxError} Invalid value
      */
-    static parseXYFloat(name, allowUniform, defaultX, defaultY, value) {
+    static parseXYFloatNew(def, value) {
       try {
         let xy = undefined;
         if (typeof value === 'object') {
@@ -1781,7 +1969,7 @@ class PropertyParser {
           }
         } 
         else if (typeof value === 'number') {
-          if (!allowUniform) {
+          if (!def.allowUniform) {
             throw {
               name: 'SyntaxError',
               message: `There should be two values.`
@@ -1793,10 +1981,10 @@ class PropertyParser {
           };          
         }
         else if (value === undefined || value === null) {
-          if (Number.isFinite(defaultX)) {
+          if (Number.isFinite(def.defaultValue.x)) {
             xy = { 
-              x: defaultX,
-              y: !Number.isFinite(defaultY) && allowUniform ? defaultX : defaultY
+              x: def.defaultValue?.x,
+              y: !Number.isFinite(def.defaultValue.y) && def.allowUniform ? def.defaultValue?.x : def.defaultValue?.y
             };
           }
           else {
@@ -1806,25 +1994,25 @@ class PropertyParser {
         else {
           // It must be a string 
           xy = value.split(/\s+/).filter(s => s);
-          if (xy.length === 1 && allowUniform) {
+          if (xy.length === 1 && def.allowUniform) {
             xy.push(xy[0]);   
           }
           
           // There should always be at least one value, so don't use defaultX
           
-          if (xy.length < 2 && Number.isFinite(defaultY)) {
-            xy.push(defaultY.toString());
+          if (xy.length < 2 && Number.isFinite(def.defaultValue?.y)) {
+            xy.push(def.defaultValue?.y.toString());
           }
           if (xy.length !== 2) {
             throw {
               name: 'SyntaxError',
-              message: `There should be ${allowUniform?'one or':''} two values.`
+              message: `There should be ${def.allowUniform?'one or':''} two values.`
             };
           }
 
           xy = { 
-              x: PropertyParser._parseFloatPart(xy[0], defaultX), 
-              y: PropertyParser._parseFloatPart(xy[1], defaultY)
+              x: PropertyParser._parseFloatPart(xy[0], def.defaultValue?.x), 
+              y: PropertyParser._parseFloatPart(xy[1], def.defaultValue?.y)
           };
         }
         
@@ -1833,7 +2021,7 @@ class PropertyParser {
       catch(ex) {
         throw {
           name: 'SyntaxError',
-          message: `Invalid value '${value}' for '${name}'. ${ex.message ? ex.message : ''}.`
+          message: `Invalid value '${value}' for '${def.name}'. ${ex.message ? ex.message : ''}.`
         };        
       }
     }  
@@ -1848,14 +2036,16 @@ class PropertyParser {
      * @param {string} value The string value of the field
      * @returns {object} An { x, y, z } object with integers 
      */
-    static parseXYZInt(name, allowUniform, defaultX, defaultY, defaultZ, value) {
-      let xyz = PropertyParser.parseXYZFloat(name, allowUniform, defaultX, defaultY, defaultZ, value);
+    static parseXYZIntNew(def, value) {
+      let xyz = PropertyParser.parseXYZFloatNew(def, value);
       
-      if (xyz.x !== Math.trunc(xyz.x) || xyz.y !== Math.trunc(xyz.y) || xyz.z !== Math.trunc(xyz.z)) {
-        throw {
-          name: 'SyntaxError',
-          message: `'${name}' object must have three integer values.`
-        };
+      if (xyz) {
+        if (xyz.x !== Math.trunc(xyz.x) || xyz.y !== Math.trunc(xyz.y) || xyz.z !== Math.trunc(xyz.z)) {
+          throw {
+            name: 'SyntaxError',
+            message: `'${def.name}' object must have three integer values.`
+          };
+        }
       }
       
       return xyz;
@@ -1871,7 +2061,7 @@ class PropertyParser {
      * @param {string} value The string value of the field
      * @returns {object} An { x, y, z } object with floats 
      */
-    static parseXYZFloat(name, allowUniform, defaultX, defaultY, defaultZ, value) {
+    static parseXYZFloatNew(def, value) {
       try {
         let xyz = undefined;
         if (typeof value === 'object') {
@@ -1888,7 +2078,7 @@ class PropertyParser {
           }
         } 
         else if (typeof value === 'number') {
-          if (!allowUniform) {
+          if (!def.allowUniform) {
             throw {
               name: 'SyntaxError',
               message: `There should be three values.`
@@ -1901,11 +2091,11 @@ class PropertyParser {
           };          
         }
         else if (value === undefined || value === null) {
-          if (Number.isFinite(defaultX)) {
+          if (Number.isFinite(def.defaultValue?.x)) {
             xyz = { 
-              x: defaultX,
-              y: !Number.isFinite(defaultY) && allowUniform ? defaultX : defaultY,
-              z: !Number.isFinite(defaultZ) && allowUniform ? defaultX : defaultZ
+              x: def.defaultValue?.x,
+              y: !Number.isFinite(def.defaultValue?.y) && def.allowUniform ? def.defaultValue?.x : def.defaultValue?.y,
+              z: !Number.isFinite(def.defaultValue?.z) && def.allowUniform ? def.defaultValue?.x : def.defaultValue?.z
             };
           }
           else {
@@ -1915,30 +2105,30 @@ class PropertyParser {
         else {
           // It must be a string 
           xyz = value.split(/\s+/).filter(s => s);
-          if (xyz.length === 1 && allowUniform) {
+          if (xyz.length === 1 && def.allowUniform) {
             xyz.push(xyz[0]);  
             xyz.push(xyz[0]);  
           }
           
           // There should always be at least one value, so don't use defaultX
           
-          if (xyz.length < 2 && Number.isFinite(defaultY)) {
-            xyz.push(defaultY.toString());
+          if (xyz.length < 2 && Number.isFinite(def.defaultValue?.y)) {
+            xyz.push(def.defaultValue?.y.toString());
           }
-          if (xyz.length < 3 && Number.isFinite(defaultZ)) {
-            xyz.push(defaultZ.toString());
+          if (xyz.length < 3 && Number.isFinite(def.defaultValue?.z)) {
+            xyz.push(def.defaultValue?.z.toString());
           }
           if (xyz.length !== 3) {
             throw {
               name: 'SyntaxError',
-              message: `There should be ${allowUniform?'one or':''} three values.`
+              message: `There should be ${def.allowUniform?'one or':''} three values.`
             };
           }
 
           xyz = { 
-              x: PropertyParser._parseFloatPart(xyz[0], defaultX), 
-              y: PropertyParser._parseFloatPart(xyz[1], defaultY), 
-              z: PropertyParser._parseFloatPart(xyz[2], defaultZ)
+              x: PropertyParser._parseFloatPart(xyz[0], def.defaultValue?.x), 
+              y: PropertyParser._parseFloatPart(xyz[1], def.defaultValue?.y), 
+              z: PropertyParser._parseFloatPart(xyz[2], def.defaultValue?.z)
           };
         }
         
@@ -1947,7 +2137,7 @@ class PropertyParser {
       catch(ex) {
         throw {
           name: 'SyntaxError',
-          message: `Invalid value '${value}' for '${name}'. ${ex.message ? ex.message : ''}.`
+          message: `Invalid value '${value}' for '${def.name}'. ${ex.message ? ex.message : ''}.`
         };        
       }
     }
@@ -1958,7 +2148,7 @@ class PropertyParser {
      * @param {string} value The string value of the field
      * @returns {array} An array with floats 
      */
-    static parseFloatArray(name, value) {
+    static parseFloatArrayNew(def, value) {
       try {
         if (value === undefined || value === null) {
           return undefined;
@@ -1994,7 +2184,7 @@ class PropertyParser {
       catch(ex) {
         throw {
           name: 'SyntaxError',
-          message: `Invalid value '${value}' for '${name}'. ${ex.message ? ex.message : ''}.`
+          message: `Invalid value '${value}' for '${def.name}'. ${ex.message ? ex.message : ''}.`
         };        
       }
     }  
@@ -2039,6 +2229,9 @@ class PropertyParser {
     static parseString(name, value) {
       return value;
     }  
+    static parseStringNew(def, value) {
+      return value;
+    }  
   
     /**
      * Parses a 'color distance íntensity angle' string to an ao object
@@ -2046,7 +2239,7 @@ class PropertyParser {
      * @param {string/object} value The ao value as a string '#000 2 1 70' (color, íntensity and angle optional), or object { color:'#000', maxDistance:2, íntensity:1, angle:70 }, or undefined
      * returns {object} { color, maxDistance, íntensity, angle } or undefined
      */
-    static parseAo(name, value) {
+    static parseAoNew(def, value) {
       try {
         let ao = undefined;
         if (typeof value === 'object') {
@@ -2074,7 +2267,7 @@ class PropertyParser {
             };
           }          
 
-          let color = PropertyParser.parseColor(name, '#000', parts[0]);
+          let color = PropertyParser.parseColorNew(def.name, parts[0] ?? '#000');
           let maxDistance = Math.abs(PropertyParser._parseFloatPart(parts[1], 1.0));
           let intensity = PropertyParser._parseFloatPart(parts[2], 1);
           let angle = PropertyParser._parseFloatPart(parts[3], 70);
@@ -2087,7 +2280,7 @@ class PropertyParser {
       catch(ex) {
         throw {
           name: 'SyntaxError',
-          message: `Invalid value '${value}' for '${name}'. ${ex.message ? ex.message : ''}.`
+          message: `Invalid value '${value}' for '${def.name}'. ${ex.message ? ex.message : ''}.`
         };        
       }
     } 
@@ -2098,10 +2291,10 @@ class PropertyParser {
      * @param {string/object} value The ao value as a string '#000 1' (color, intensity is optional), or object { color:'#000', intensity:1 }, or undefined
      * returns {object} { color, intensity } or undefined
      */
-    static parseQuickAo(name, value) {
+    static parseQuickAoNew(def, value) {
       try {
         if (typeof value === 'object') {
-          let color = value.color || '#000';
+          let color = value.color ?? '#000';
           let intensity = !Number.isFinite(value.intensity) ? 1.0 : value.intensity;
           return { color, intensity };
         }
@@ -2121,7 +2314,7 @@ class PropertyParser {
             };
           }                   
 
-          let color = PropertyParser.parseColor(name, '#000', parts[0]);
+          let color = PropertyParser.parseColorNew(def.name, parts[0] ?? '#000');
           let intensity = PropertyParser._parseFloatPart(parts[1], 1);
 
           return { color, intensity };
@@ -2130,7 +2323,7 @@ class PropertyParser {
       catch(ex) {
         throw {
           name: 'SyntaxError',
-          message: `Invalid value '${value}' for '${name}'. ${ex.message ? ex.message : ''}.`
+          message: `Invalid value '${value}' for '${def.name}'. ${ex.message ? ex.message : ''}.`
         };        
       }
     } 
@@ -2141,14 +2334,13 @@ class PropertyParser {
      * @param {string/object} value The scale value as a string '1 1 1', object { x:1, y:1, z:1 }, number or undefined
      * returns {object} { x, y, z }
      */
-    static parseScale(name, defaultValue, value) {
-      let parseValue = value || defaultValue;
-      let scale = PropertyParser.parseXYZFloat(name, true, undefined, undefined, undefined, parseValue);
+    static parseScaleNew(def, value) {
+      let scale = PropertyParser.parseXYZFloatNew(def, value);
       
       if (scale && (scale.x === 0 || scale.y === 0 || scale.z === 0)) {
         throw {
           name: 'SyntaxError',
-          message: `'${name}' cannot be 0 for x, y or z`
+          message: `'${def.name}' cannot be 0 for x, y or z`
         };        
       }
             
@@ -2161,7 +2353,7 @@ class PropertyParser {
      * @param {string/object} value The deform value as a string '2 1 1', object { count:2, strength:1, damping:1 }, or undefined
      * returns {object} { count, strength, damping }
      */
-    static parseDeform(name, value) {
+    static parseDeformNew(def, value) {
       let deform = undefined;
       if (typeof value === 'object') {
         let count = !Number.isFinite(value.count) ? 1.0 : value.strength;
@@ -2173,7 +2365,8 @@ class PropertyParser {
         deform = { count:value, strength:1, damping:1 };
       }
       else if (typeof value === 'string') {
-        let values = PropertyParser.parseXYZFloat(name, false, 0, 1, 1, value);
+        let parts = value.trim().replace(/\s+/g, ' ').split(' ');
+        let values = PropertyParser.parseXYZFloatNew(def, `${parts[0]??0} ${parts[1]??1} ${parts[2]??1}`);
         deform = { count:Math.abs(Math.round(values.x)), strength:values.y, damping:values.z };
       }
       
@@ -2187,7 +2380,7 @@ class PropertyParser {
      * @param {string} value The warp data, or undefined
      * returns {object} { amplitude, frequency } or undefined
      */
-    static parseWarp(name, value) {
+    static parseWarpNew(def, value) {
       let warp = undefined;
 
       if (typeof value === 'object') {
@@ -2222,7 +2415,7 @@ class PropertyParser {
         else {
           throw {
             name: 'SyntaxError',
-            message: `'${name}' must have 1 to 4 values (amplitude [frequency] OR amplitudeX amplitudeY amplitudeZ [frequency])`
+            message: `'${def.name}' must have 1 to 4 values (amplitude [frequency] OR amplitudeX amplitudeY amplitudeZ [frequency])`
           };
         }
       }
@@ -2237,7 +2430,7 @@ class PropertyParser {
      * NOTE: Since the color may be defined in a material which is parsed later, 
      *       we'll resolve the colorID later to add the color.
      */
-    static parseShell(name, value) {
+    static parseShellNew(def, value) {
       let shell = undefined;
       let error = false;
       if (Array.isArray(value)) {
@@ -2279,7 +2472,7 @@ class PropertyParser {
       if (error) {
         throw {
           name: 'SyntaxError',
-          message: `Invalid value '${value}' for ${name}. Shell should be 'none' or one or more color ID's and distances, e.g. P 0.2 Q 0.4`
+          message: `Invalid value '${value}' for ${def.name}. Shell should be 'none' or one or more color ID's and distances, e.g. P 0.2 Q 0.4`
         };        
       }
       else if (shell) {
@@ -2299,7 +2492,7 @@ class PropertyParser {
      * @throws Syntax error in case the vertex data is not correct (i.e. it must be [<name> <float>+]+ )
      */
     // TODO: ALLOW FOR DIRECT INPUT OF AN ARRAY OF { name, values } OBJECTS, SIMILAR TO ABOVE FUNCTIONS
-    static parseData(name, value) {
+    static parseDataNew(def, value) {
       try {
         if (value) {
           let data = [];
@@ -2336,7 +2529,7 @@ class PropertyParser {
       catch(ex) {
         throw {
           name: 'SyntaxError',
-          message: `Invalid value '${value}' for ''${name}'. Data should consist of one or more names, each followed by 1 to 4 float (default) values.`
+          message: `Invalid value '${value}' for ''${def.name}'. Data should consist of one or more names, each followed by 1 to 4 float (default) values.`
         };        
       }
     }  
@@ -2348,7 +2541,7 @@ class PropertyParser {
      * @returns {object} An { uscale, vscale, uoffset, voffset, rotation } object with floats 
      */
     // TODO: ALLOW FOR DIRECT INPUT OF A MAPTRANSFORM OBJECT, SIMILAR TO ABOVE FUNCTIONS
-    static parseMapTransform(name, value) {
+    static parseMapTransformNew(def, value) {
       try {
         let parseValue = value || '-1 -1 0 0 0';      
         let values = parseValue.split(/\s+/);
@@ -2368,10 +2561,48 @@ class PropertyParser {
       catch(ex) {
         throw {
           name: 'SyntaxError',
-          message: `Invalid value '${value}' for '${name}'. '${name}' must have 2, 4 or 5 values.`
+          message: `Invalid value '${value}' for '${def.name}'. '${def.name}' must have 2, 4 or 5 values.`
         };        
       }      
     } 
+  
+    /**
+     * Parses an 'A:B C:E' string with swapped colors into an array of { from, to } objects
+     * @param {string} name The name of the field
+     * @param {string} value The string value of the field
+     * @returns {array} An array with { from, to } objects 
+     */
+    static parseSwapNew(def, value) {
+      if (!value) return undefined;
+
+      if (Array.isArray(value)) {
+        return value;
+      }
+
+      // Cleanup the string and convert it to a string array ["A:B", "C:E", ...]
+      let swaps = value.trim().replace(/(\s+(?=:))|((?<=:)\s+)|((?<=[ ])\s+)/, '').split(' ');
+
+      let result = [];
+      for (let s = 0; s < swaps.length; s++) {
+        let swap = swaps[s];
+        
+        // Split the string 
+        let from = swap.split(':')[0];
+        let to   = swap.split(':')[1];
+        
+        // Check for wrong color id's
+        if (!from.match(/^[A-Z][a-z]*$/) || !to.match(/^[A-Z][a-z]*$/)) {
+          throw {
+            name: 'SyntaxError',
+            message: `Invalid value '${swap}' for '${def.name}'.`
+          };
+        }
+          
+        result.push( {from, to } );
+      }
+      
+      return result;
+    }   
   
     /**
      * Parses an string with color definitions, e.g. A:#08F B:#FF8800 ...  or A(123):#0088FF B(124):#FF8800 (with MagicaVoxel palette indices)
@@ -2380,7 +2611,7 @@ class PropertyParser {
      * @returns {array} An array with Color classes. Each color has an id and exId (may be null)
      */
     // TODO: ALLOW FOR DIRECT INPUT OF AN ARRAY OF COLOR OBJECTS, SIMILAR TO ABOVE FUNCTIONS
-    static parseColors(name, value) {
+    static parseColorsNew(def, value) {
       if (Array.isArray(value)) {
         return value;
       }
@@ -2400,11 +2631,11 @@ class PropertyParser {
 
       let colorParts = parseValue.split(/\s+/);
       colorParts.forEach(function (colorData) {
-          let color  = PropertyParser.parseColor(name, undefined, colorData.split(':')[1]);
+          let color  = PropertyParser.parseColorNew(def, colorData.split(':')[1]);
           if (!color) {
             throw {
               name: 'SyntaxError',
-              message: `Invalid '${name}' '${colorData}'.`
+              message: `Invalid '${def.name}' '${colorData}'.`
             };            
           }
         
@@ -2418,7 +2649,7 @@ class PropertyParser {
           if (!/^[A-Z][a-z]*|_$/.test(color.id)) {
             throw {
               name: 'SyntaxError',
-              message: `Invalid color ID '${color.id}' for '${name}.`
+              message: `Invalid color ID '${color.id}' for '${def.name}.`
             };
           }
         
@@ -2563,6 +2794,10 @@ class PropertyWriter {
     return result;
   }  
   
+  static writeSwap(value) {
+    return value.map((s) => `${s.from}:${s.to}`).join(' ');
+  }
+  
   static writeColors(value) {
     return value.map((c) => `${c.id}${c.exId == null ? '' : '(' + c.exId + ')'}:${c._color}`).join(' ');
   }
@@ -2579,52 +2814,63 @@ class PropertyWriter {
     // The order determines the write order
 
     _texture: {
-      doc: "Texture properties"
+      title: "Texture properties"
     },
     id: {
+      name: 'id',
       doc: "The texture Id, which material maps reference.",
       format: "<string>",
       values: undefined,
+      defaultValue: undefined,
       completion: "",
       dontWrite: undefined,
       write: undefined,
-      parse: PropertyParser.parseName.bind(null, "id"),
+      parse: function(value) { return PropertyParser.parseNameNew(this, value); }
     },
     borderOffset: {
+      name: 'borderoffset',
       doc: "The borderoffset prevents texture bleeding. The default is 0.5 pixels but high resolutions textures may require a higher value.",
       format: "<borderoffset>",
       values: undefined,
+      defaultValue: 0.5,
       completion: "0.5",
       dontWrite: "0.5",
       write: undefined,
-      parse: PropertyParser.parseFloat.bind(null, "borderoffset", 0.5),
+      parse: function(value) { return PropertyParser.parseFloatNew(this, value); }
     },
     size: {
+      name: 'size',
       doc: "Used to prevent bleeding (reduce by setting size smaller).",
       format: "<float:size> | <x> <y>",
       values: undefined,
+      defaultValue: { x:undefined, y:undefined },
+      allowUniform: true,
       completion: "512 512",
       dontWrite: undefined,
-      write: (v) => `${v.x} ${v.y}`,
-      parse: PropertyParser.parseXYFloat.bind(null, "size", true, undefined, undefined),
+      write: function(value) { return `${value.x} ${value.y}`; },
+      parse: function(value) { return PropertyParser.parseXYFloatNew(this, value); }
     },
     cube: {
+      name: 'cube',
       doc: "Wheter this is a cube texture.",
       format: undefined,
       values: ["true","false"],
+      defaultValue: undefined,
       completion: "false",
       dontWrite: "false",
       write: undefined,
-      parse: PropertyParser.parseBoolean.bind(null, "cube", undefined),
+      parse: function(value) { return PropertyParser.parseBooleanNew(this, value); }
     },
     image: {
+      name: 'image',
       doc: "The image in Base64 format. Load in the playground using 'Add Image'.",
       format: "data:image/<type>;base64,...",
       values: undefined,
+      defaultValue: undefined,
       completion: "",
       dontWrite: undefined,
       write: undefined,
-      parse: PropertyParser.parseString.bind(null, "image"),
+      parse: function(value) { return PropertyParser.parseStringNew(this, value); }
     }
   };
 })();
@@ -2692,7 +2938,7 @@ class TextureReader {
       if (!found) {
         throw {
             name: 'SyntaxError',
-            message: `(${modelName}) Unknown property '${property}' found in texture.`
+            message: `(${modelName}) Unknown property '${property ? property : parameters[property]}' found in texture.`
         };                  
       }
     } 
@@ -2724,12 +2970,10 @@ class TextureReader {
 class TextureWriter { 
   
   static write(texture) {
-    let definitions = SVOX.TEXTUREDEFINITIONS;
-    
     let out = [];
-    for (const property in texture) {
-      let def = definitions[property];
-      if (def !== undefined && texture[property] !== undefined) {
+    for (const property in SVOX.TEXTUREDEFINITIONS) {
+      let def = SVOX.TEXTUREDEFINITIONS[property];
+      if (texture[property] !== undefined) {
         let value = def.write ? def.write(texture[property]) : `${texture[property]}`;
         if (value !== def.dontWrite) {
           out.push(`${property.toLowerCase()} = ${value}`)
@@ -2753,97 +2997,119 @@ class TextureWriter {
     // The order determines the write order
 
     _light: {
-      doc: "Light properties"
+      title: "Light properties"
     },
     color: {
+      name: 'color',
       doc: "The light color (default #FFF).",
       format: "<#RGB|#RRGGBB>",
       values: undefined,
+      defaultValue: '#FFF',
       completion: "#F80",
       dontWrite: undefined,
       write: undefined,
-      parse: PropertyParser.parseColor.bind(null, "color", "#FFF"),
+      parse: function(value) { return PropertyParser.parseColorNew(this, value); }
     },  
     intensity: {
+      name: 'intensity',
       doc: "The intensity of the light.",
       format: "<float>",
       values: undefined,
+      defaultValue: 1,
       completion: "0.5",
       dontWrite: "1",
       write: undefined,
-      parse: PropertyParser.parseFloat.bind(null, "intensity", 1),
+      parse: function(value) { return PropertyParser.parseFloatNew(this, value); }
     },  
     direction: {
+      name: 'direction',
       doc: "The direction from which the directional light shines.",
       format: "<x> <y> <z>",
       values: undefined,
+      defaultValue: { x:undefined, y:undefined, z:undefined },
+      allowUniform: false,
       completion: "1 1 0",
       dontWrite: undefined,
-      write: (v) => `${v.x} ${v.y} ${v.z}`,
-      parse: PropertyParser.parseXYZFloat.bind(null, "direction", false, undefined, undefined, undefined),
+      write: function(value) { return `${value.x} ${value.y} ${value.z}`; },
+      parse: function(value) { return PropertyParser.parseXYZFloatNew(this, value); }
     },
     atVoxel: {
+      name: 'atvoxel',
       doc: "The color Id of the voxel(s) for which a light is created in its center. May result in many lights and slow rendering! ",
       format: "<ColorId>",
       values: undefined,
+      defaultValue: undefined,
       completion: "V",
       dontWrite: undefined,
-      write: (v) => `${v}`,
-      parse: PropertyParser.parseColorId.bind(null, "atvoxel"),
+      write: function(value) { return `${value}`; },
+      parse: function(value) { return PropertyParser.parseColorIdNew(this, value); }
     },
     position: {
+      name: 'position',
       doc: "The position (in world coordinates!) at which the positional light is located. Distance & size in world units.",
       format: "<x> <y> <z>",
       values: undefined,
+      defaultValue: { x:undefined, y:undefined, z:undefined },
+      allowUniform: false,
       completion: "2 2 0",
       dontWrite: undefined,
-      write: (v) => `${v.x} ${v.y} ${v.z}`,
-      parse: PropertyParser.parseXYZFloat.bind(null, "position", false, undefined, undefined, undefined),
+      write: function(value) { return `${value.x} ${value.y} ${value.z}`; },
+      parse: function(value) { return PropertyParser.parseXYZFloatNew(this, value); }
     },
     distance: {
+      name: 'distance',
       doc: "For 'atvoxel' the distance in voxels that the light travels, but for 'position' these are world units",
       format: "<float>",
       values: undefined,
+      defaultValue: undefined,
       completion: "10",
       dontWrite: undefined,
       write: undefined,
-      parse: PropertyParser.parseFloat.bind(null, "distance", undefined),
+      parse: function(value) { return PropertyParser.parseFloatNew(this, value); }
     },  
     size: {
+      name: 'size',
       doc: "The size of the visible positional light sphere. For 'atvoxel' in voxels, for 'position' in world units.",
       format: "<float>",
       values: undefined,
+      defaultValue: 0,
       completion: "1",
       dontWrite: "0",
       write: undefined,
-      parse: PropertyParser.parseFloat.bind(null, "size", 0),
+      parse: function(value) { return PropertyParser.parseFloatNew(this, value); }
     },  
     detail: {
-      doc: "The detail of the visible positional light sphere.",
+      name: 'detail',
+      doc: "The detail of the visible positional light sphere. 0 = 8 faces, 1 = 32 faces, 2 = 128 faces, 3 = 512 faces.",
       format: undefined,
       values: ["0","1","2","3"],
+      defaultValue: undefined,
       completion: "2",
       dontWrite: "1",
       write: undefined,
-      parse: PropertyParser.parseFloat.bind(null, "detail", undefined),
+      parse: function(value) { return PropertyParser.parseFloatNew(this, value); }
     },
     castShadow: {
+      name: 'castshadow',
       doc: "Defines whether this light casts baked shadows. Add castshadow = false to materials that have atvoxel lights.",
       format: undefined,
       values: ["true","false"],
+      defaultValue: undefined,
       completion: "true",
       dontWrite: undefined,
       write: undefined,
-      parse: PropertyParser.parseBoolean.bind(null, "castShadow", undefined),
+      parse: function(value) { return PropertyParser.parseBooleanNew(this, value); }
     },     
     data: {
+      name: 'data',
       doc: "Vertex data for use in shaders, so only for visible lights (detail <> 0). Names and values must match model data.",
       format: "[<attributename> <float1> ... <float4>]+ ",
       values: undefined,
+      defaultValue: undefined,
       completion: "data 0.5 0.5",
       dontWrite: undefined,
-      write: (v) => PropertyWriter.writeVertexData(v),
-      parse: PropertyParser.parseData.bind(null, "data"),
+      write: function(value) { return PropertyWriter.writeVertexData(value); },
+      parse: function(value) { return PropertyParser.parseDataNew(this, value); }
     },    
 };
 })();
@@ -2912,7 +3178,7 @@ class LightReader {
       if (!found) {
         throw {
             name: 'SyntaxError',
-            message: `(${modelName}) Unknown property '${property}' found in light.`
+            message: `(${modelName}) Unknown property '${property ? property : parameters[property]}' found in light.`
         };                  
       }
     } 
@@ -3002,12 +3268,10 @@ class LightReader {
 class LightWriter { 
   
   static write(light) {
-    let definitions = SVOX.LIGHTDEFINITIONS;
-    
     let out = [];
-    for (const property in light) {
-      let def = definitions[property];
-      if (def !== undefined && light[property] !== undefined) {
+    for (const property in SVOX.LIGHTDEFINITIONS) {
+      let def = SVOX.LIGHTDEFINITIONS[property];
+      if (light[property] !== undefined) {
         let value = def.write ? def.write(light[property]) : `${light[property]}`;
         if (value !== def.dontWrite) {
           out.push(`${property.toLowerCase()} = ${value}`)
@@ -3031,254 +3295,653 @@ class LightWriter {
     // The order determines the write order
 
     _group: {
-      doc: "Group properties"
+      title: "Group properties"
     },
     id: {
+      name: 'id',
       doc: "The optional group Id, add materials to a group by adding group = <groupid> to the material.",
       format: "<string>",
       values: undefined,
+      defaultValue: undefined,
       completion: "",
       dontWrite: undefined,
       write: undefined,
-      parse: PropertyParser.parseName.bind(null, "id", undefined),
+      parse: function(value) { return PropertyParser.parseNameNew(this, value); }
     },   
     clone: {
+      name: 'clone',
       doc: "Clone another group to reuse it, overwriting any of its properties, e.g. rotating or scaling the group and its children.",
       format: "<string>",
       values: undefined,
+      defaultValue: undefined,
       completion: "",
       dontWrite: undefined,
       write: undefined,
-      parse: PropertyParser.parseName.bind(null, "clone", undefined),
+      parse: function(value) { return PropertyParser.parseNameNew(this, value); }
     },    
     prefab: {
+      name: 'prefab',
       doc: "Prefab groups are clonable templates. Prefab properties are not overwritten when cloning. Prefabs cannot be nested.",
       format: undefined,
       values: ["true","false"],
+      defaultValue: undefined,
       completion: "true",
       dontWrite: undefined,
       write: undefined,
-      parse: PropertyParser.parseBoolean.bind(null, "prefab", undefined),
+      parse: function(value) { return PropertyParser.parseBooleanNew(this, value); }
     },    
     group: {
+      name: 'group',
       doc: "The group Id from a parent group, to which this group is attached, following it for rotation and translation.",
       format: "<string>",
       values: undefined,
+      defaultValue: '*',
       completion: "",
       dontWrite: '*',
       write: undefined,
-      parse: PropertyParser.parseName.bind(null, "group", '*'),
+      parse: function(value) { return PropertyParser.parseNameNew(this, value); }, 
     },      
-    recolor: {
-      doc: "Recolor (some of) the colors for this group, or its sub groups, by specifying a new hexadecimal RGB value for them.",
-      format: "[<colorid>:<#RGB|#RRGGBB>]+",
+    swap: {
+      name: 'swap',
+      doc: "Swaps (some of) the colors for this group, or its sub groups, by specifying another color ID from any of the defined materials in the model.",
+      format: "[<coloridtoswap>:<newcolorid>]+",
       values: undefined,
+      defaultValue: undefined,
+      completion: "A:B",
+      dontWrite: undefined,
+      write: function(value) { return PropertyWriter.writeSwap(value); },
+      parse: function(value) { return PropertyParser.parseSwapNew(this, value); }
+    },        
+    recolor: {
+      name: 'recolor',
+      doc: "Recolor (some of) the colors for this group, or its sub groups, by specifying a new hexadecimal RGB value for them. In combination with swap, use the original color id.",
+      format: "[<coloridtorecolor>:<#RGB|#RRGGBB>]+",
+      values: undefined,
+      defaultValue: undefined,
       completion: "V:#F80",
       dontWrite: undefined,
-      write: (v) => PropertyWriter.writeColors(v),
-      parse: PropertyParser.parseColors.bind(null, "recolor"),
+      write: function(value) { return PropertyWriter.writeColors(value); },
+      parse: function(value) { return PropertyParser.parseColorsNew(this, value); }
     },        
     scale: {
+      name: 'scale',
       doc: "The scale of the voxels for this group in voxels (0.5 = half the size of voxels in model).",
       format: "<x> [<y> <z>]",
       values: undefined,
+      defaultValue: { x:undefined, y:undefined, z:undefined },
+      allowUniform: true,
       completion: "1 1 1",
-      dontWrite: undefined,
-      write: (v) => PropertyWriter.writeFloatXYZ(v, true),
-      parse: PropertyParser.parseScale.bind(null, "scale", undefined)
+      dontWrite: "1 1 1",
+      write: function(value) { return PropertyWriter.writeFloatXYZ(value, true); },
+      parse: function(value) { return PropertyParser.parseScaleNew(this, value); }
     },
     origin: {
+      name: 'origin',
       doc: "The origin for the group.",
       format: "{ -x x +x -y y +y -z z +z }",
       values: undefined,
+      defaultValue: "x y z",
       completion: "-y",
-      dontWrite: undefined,
-      write: (v) => `${Planar.toString(v)}`,
-      parse: PropertyParser.parsePlanarPoint.bind(null, "origin", undefined),
+      dontWrite: "x y z",
+      write: function(value) { return `${Planar.toString(value)}`; },
+      parse: function(value) { return PropertyParser.parsePlanarPointNew(this, value); }
     },      
     resize: {
-      doc: "Compensates for size change due to deform, warp or scatter.",
+      name: 'resize',
+      doc: "Compensates for size change due to deform, warp, scatter, (smooth)translate, ...",
       format: undefined,
-      values: ["bounds","fit","fill"],
+      values: ["fill", "fit", "bounds", "fitbounds", "none"],
+      defaultValue: undefined,
       completion: "fit",
       dontWrite: undefined,
       write: undefined,
-      parse: PropertyParser.parseEnum.bind(null, "resize", ["bounds", "fit", "fill"], undefined),
-    },          
+      parse: function(value) { return PropertyParser.parseEnumNew(this, value); }
+    },            
     rotation: {
+      name: 'rotation',
       doc: "The rotation of the group around its center over the three axes.",
       format: "<float:x> <float:y> <float:z>",
       values: undefined,
+      allowUniform: false,
+      defaultValue: { x:undefined, y:undefined, z:undefined },
       completion: "0 45 0",
       dontWrite: undefined,
-      write: (v) => PropertyWriter.writeFloatXYZ(v, false),
-      parse: PropertyParser.parseXYZFloat.bind(null, "rotation", false, undefined, undefined, undefined),
+      write: function(value) { return PropertyWriter.writeFloatXYZ(value, false); },
+      parse: function(value) { return PropertyParser.parseXYZFloatNew(this, value); }
     },
     position: {
+      name: 'position',
       doc: "The position of the group (in voxels coordinates from the parent group or model origin).",
       format: "<float:x> <float:y> <float:z>",
       values: undefined,
+      allowUniform: false,
+      defaultValue: { x:undefined, y:undefined, z:undefined },
       completion: "0 0.5 0",
       dontWrite: undefined,
-      write: (v) => PropertyWriter.writeFloatXYZ(v, false),
-      parse: PropertyParser.parseXYZFloat.bind(null, "position", false, undefined, undefined, undefined),
+      write: function(value) { return PropertyWriter.writeFloatXYZ(value, false); },
+      parse: function(value) { return PropertyParser.parseXYZFloatNew(this, value); }
     },  
     translation: {
+      name: 'translation',
       doc: "The translation of the group (in voxels coordinates from the original group position).",
       format: "<float:x> <float:y> <float:z>",
       values: undefined,
+      allowUniform: false,
+      defaultValue: { x:undefined, y:undefined, z:undefined },
       completion: "0 0 0",
       dontWrite: undefined,
-      write: (v) => PropertyWriter.writeFloatXYZ(v, false),
-      parse: PropertyParser.parseXYZFloat.bind(null, "translation", false, undefined, undefined, undefined),
+      write: function(value) { return PropertyWriter.writeFloatXYZ(value, false); },
+      parse: function(value) { return PropertyParser.parseXYZFloatNew(this, value); }
     },
     _shape: {
-      doc: "Shape properties"
+      title: "Shape properties"
     },
+    _shapeMeta: {
+      meta: "See model",
+      title: "See model",
+      doc: "The shape options for groups are identical to those in the model. Note that they only apply to voxels in the group, not to nested groups.",
+      format: "shape, scale.., smoothscale.., translate.., smoothtranslate.., rotate.., smoothrotate.., bend.."
+    },     
     shape: {
+      name: 'shape',
+      hide: true,
       doc: "Reshapes the group to fit in this shape. Is not applied to nested groups. Values cylinder-x, cylinder-y and cylinder-z will be deprecated in a future release!",
       format: undefined,
       values: ["box","sphere","cylinderx","cylindery","cylinderz"],
+      defaultValue: undefined,
       completion: "cylindery",
       dontWrite: undefined,
       write: undefined,
-      parse: PropertyParser.parseEnum.bind(null, "shape", ["box","sphere","cylinderx","cylindery","cylinderz"], undefined),
+      parse: function(value) { return PropertyParser.parseEnumNew(this, value); }
     },    
+    _scaleMeta: {
+      meta: "scale<axis><over>",
+      hide: true,
+      title: "Linear interpolated scale.",
+      doc: "Linear interpolated scale. E.g. scalexy = 1 1 0 scales x over y like a house. Is not applied to nested groups. When textures are distored use simplify = false.\nOptions: scaleyx, scalezx, scalexy, scalezy, scalexz, scaleyz",
+      format: "scale<axis><over> = <scale0> ... <scaleN>"
+    },     
     scaleYX: {
-      doc: "Scale Y over X, i.e. scales the group in the Y direction depending on the X position. Is not applied to nested groups..  When textures are distored use simplify = false.",
-      format: "<scale0> <scale1> ... <scaleN>",
+      name: 'scaleyx',
+      hide: true,
+      doc: "Linear interpolated scale Y over X, i.e. scales the group in the Y direction depending on the X position. Is not applied to nested groups. When textures are distored use simplify = false.",
+      format: "<scale0> ... <scaleN>",
       values: undefined,
+      defaultValue: undefined,
       completion: "1.5 0.5 1.5",
       dontWrite: undefined,
-      write: (v) => v.join(' '),
-      parse: PropertyParser.parseFloatArray.bind(null, "scaleyx"),
+      write: function(value) { return value.join(' '); },
+      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
     },     
     scaleZX: {
-      doc: "Scale Z over X, i.e. scales the group in the Z direction depending on the X position. Is not applied to nested groups.  When textures are distored use simplify = false.",
-      format: "<scale0> <scale1> ... <scaleN>",
+      name: 'scalezx',
+      hide: true,
+      doc: "Linear interpolated scale Z over X, i.e. scales the group in the Z direction depending on the X position. Is not applied to nested groups. When textures are distored use simplify = false.",
+      format: "<scale0> ... <scaleN>",
       values: undefined,
+      defaultValue: undefined,
       completion: "1.5 0.5 1.5",
       dontWrite: undefined,
-      write: (v) => v.join(' '),
-      parse: PropertyParser.parseFloatArray.bind(null, "scalezx"),
+      write: function(value) { return value.join(' '); },
+      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
     },
     scaleXY: {
-      doc: "Scale X over Y, i.e. scales the model in the X direction depending on the Y position. Is not applied to nested groups.  When textures are distored use simplify = false.",
-      format: "<scale0> <scale1> ... <scaleN>",
+      name: 'scalexy',
+      hide: true,
+      doc: "Linear interpolated scale X over Y, i.e. scales the model in the X direction depending on the Y position. Is not applied to nested groups. When textures are distored use simplify = false.",
+      format: "<scale0> ... <scaleN>",
       values: undefined,
+      defaultValue: undefined,
       completion: "1.5 0.5 1.5",
       dontWrite: undefined,
-      write: (v) => v.join(' '),
-      parse: PropertyParser.parseFloatArray.bind(null, "scalexy"),
+      write: function(value) { return value.join(' '); },
+      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
     },    
     scaleZY: {
-      doc: "Scale Z over Y, i.e. scales the group in the Z direction depending on the Y position. Is not applied to nested groups.  When textures are distored use simplify = false.",
-      format: "<scale0> <scale1> ... <scaleN>",
+      name: 'scalezy',
+      hide: true,
+      doc: "Linear interpolated scale Z over Y, i.e. scales the group in the Z direction depending on the Y position. Is not applied to nested groups. When textures are distored use simplify = false.",
+      format: "<scale0> ... <scaleN>",
       values: undefined,
+      defaultValue: undefined,
       completion: "1.5 0.5 1.5",
       dontWrite: undefined,
-      write: (v) => v.join(' '),
-      parse: PropertyParser.parseFloatArray.bind(null, "scalezy"),
+      write: function(value) { return value.join(' '); },
+      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
     },       
     scaleXZ: {
-      doc: "Scale X over Z, i.e. scales the group in the X direction depending on the Z position. Is not applied to nested groups.  When textures are distored use simplify = false.",
-      format: "<scale0> <scale1> ... <scaleN>",
+      name: 'scalexz',
+      hide: true,
+      doc: "Linear interpolated scale X over Z, i.e. scales the group in the X direction depending on the Z position. Is not applied to nested groups. When textures are distored use simplify = false.",
+      format: "<scale0> ... <scaleN>",
       values: undefined,
+      defaultValue: undefined,
       completion: "1.5 0.5 1.5",
       dontWrite: undefined,
-      write: (v) => v.join(' '),
-      parse: PropertyParser.parseFloatArray.bind(null, "scalexz"),
+      write: function(value) { return value.join(' '); },
+      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
     },       
     scaleYZ: {
-      doc: "Scale Y over Z, i.e. scales the group in the Y direction depending on the Z position. Is not applied to nested groups.  When textures are distored use simplify = false.",
-      format: "<scale0> <scale1> ... <scaleN>",
+      name: 'scaleyz',
+      hide: true,
+      doc: "Linear interpolated scale Y over Z, i.e. scales the group in the Y direction depending on the Z position. Is not applied to nested groups. When textures are distored use simplify = false.",
+      format: "<scale0> ... <scaleN>",
       values: undefined,
+      defaultValue: undefined,
       completion: "1.5 0.5 1.5",
       dontWrite: undefined,
-      write: (v) => v.join(' '),
-      parse: PropertyParser.parseFloatArray.bind(null, "scaleyz"),
+      write: function(value) { return value.join(' '); },
+      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
     },     
-    rotateX: {
-      doc: "Rotate the group over the X axis, i.e. rotates the group depending on the X position. Is not applied to nested groups.",
-      format: "<degrees0> <degrees1> ... <degreesN>",
+    _smoothScaleMeta: {
+      meta: "smoothscale<axis><over>",
+      hide: true,
+      title: "Smooth interpolated scale.",
+      doc: "Smooth interpolated scale. E.g. scalexy = 1 1 0 scales x over y like a house. Is not applied to nested groups. When textures are distored use simplify = false.\nOptions: smoothscaleyx, smoothscalezx, smoothscalexy, smoothscalezy, smoothscalexz, smoothscaleyz",
+      format: "smoothscale<axis><over> = <scale0> ... <scaleN>"
+    },     
+    smoothScaleYX: {
+      name: 'smoothscaleyx',
+      hide: true,
+      doc: "Smooth interpolated scale Y over X, i.e. scales the group in the Y direction depending on the X position. Is not applied to nested groups. When textures are distored use simplify = false.",
+      format: "<scale0> ... <scaleN>",
       values: undefined,
+      defaultValue: undefined,
+      completion: "1.5 0.5 1.5",
+      dontWrite: undefined,
+      write: function(value) { return value.join(' '); },
+      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+    },     
+    smoothScaleZX: {
+      name: 'smoothscalezx',
+      hide: true,
+      doc: "Smooth interpolated scale Z over X, i.e. scales the group in the Z direction depending on the X position. Is not applied to nested groups. When textures are distored use simplify = false.",
+      format: "<scale0> ... <scaleN>",
+      values: undefined,
+      defaultValue: undefined,
+      completion: "1.5 0.5 1.5",
+      dontWrite: undefined,
+      write: function(value) { return value.join(' '); },
+      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+    },
+    smoothScaleXY: {
+      name: 'smoothscalexy',
+      hide: true,
+      doc: "Smooth interpolated scale X over Y, i.e. scales the model in the X direction depending on the Y position. Is not applied to nested groups. When textures are distored use simplify = false.",
+      format: "<scale0> ... <scaleN>",
+      values: undefined,
+      defaultValue: undefined,
+      completion: "1.5 0.5 1.5",
+      dontWrite: undefined,
+      write: function(value) { return value.join(' '); },
+      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+    },    
+    smoothScaleZY: {
+      name: 'smoothscalezy',
+      hide: true,
+      doc: "Smooth interpolated scale Z over Y, i.e. scales the group in the Z direction depending on the Y position. Is not applied to nested groups. When textures are distored use simplify = false.",
+      format: "<scale0> ... <scaleN>",
+      values: undefined,
+      defaultValue: undefined,
+      completion: "1.5 0.5 1.5",
+      dontWrite: undefined,
+      write: function(value) { return value.join(' '); },
+      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+    },       
+    smoothScaleXZ: {
+      name: 'smoothscalexz',
+      hide: true,
+      doc: "Smooth interpolated scale X over Z, i.e. scales the group in the X direction depending on the Z position. Is not applied to nested groups. When textures are distored use simplify = false.",
+      format: "<scale0> ... <scaleN>",
+      values: undefined,
+      defaultValue: undefined,
+      completion: "1.5 0.5 1.5",
+      dontWrite: undefined,
+      write: function(value) { return value.join(' '); },
+      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+    },       
+    smoothScaleYZ: {
+      name: 'smoothscaleyz',
+      hide: true,
+      doc: "Smooth interpolated scale Y over Z, i.e. scales the group in the Y direction depending on the Z position. Is not applied to nested groups. When textures are distored use simplify = false.",
+      format: "<scale0> ... <scaleN>",
+      values: undefined,
+      defaultValue: undefined,
+      completion: "1.5 0.5 1.5",
+      dontWrite: undefined,
+      write: function(value) { return value.join(' '); },
+      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+    },     
+    _rotateMeta: {
+      name: 'id',
+      hide: true,
+      meta: "rotate<over>",
+      title: "Linear interpolated rotate.",
+      doc: "Linear interpolated rotate. E.g. rotatey = 0 90 180 twists around in the y direction. Is not applied to nested groups. Without deform usually combined with lighting = sides.\nOptions: rotatex, rotatey, rotatez",
+      format: "rotate<over> = <degrees0> ... <degreesN>"
+    },                 
+    rotateX: {
+      name: 'rotatex',
+      hide: true,
+      doc: "Linear interpolated rotate the group over the X axis, i.e. rotates the group depending on the X position. Is not applied to nested groups.",
+      format: "<degrees0> ... <degreesN>",
+      values: undefined,
+      defaultValue: undefined,
       completion: "0 90 0",
       dontWrite: undefined,
-      write: (v) => v.join(' '),
-      parse: PropertyParser.parseFloatArray.bind(null, "rotatex"),
+      write: function(value) { return value.join(' '); },
+      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
     },     
     rotateY: {
-      doc: "Rotate the group over the Y axis, i.e. rotates the group depending on the Y position. Is not applied to nested groups.",
-      format: "<degrees0> <degrees1> ... <degreesN>",
+      name: 'rotatey',
+      hide: true,
+      doc: "Linear interpolated rotate the group over the Y axis, i.e. rotates the group depending on the Y position. Is not applied to nested groups.",
+      format: "<degrees0> ... <degreesN>",
       values: undefined,
+      defaultValue: undefined,
       completion: "0 90 0",
       dontWrite: undefined,
-      write: (v) => v.join(' '),
-      parse: PropertyParser.parseFloatArray.bind(null, "rotatey"),
+      write: function(value) { return value.join(' '); },
+      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
     },     
     rotateZ: {
-      doc: "Rotate the group over the Z axis, i.e. rotates the group depending on the Z position. Is not applied to nested groups.",
-      format: "<degrees0> <degrees1> ... <degreesN>",
+      name: 'rotatez',
+      hide: true,
+      doc: "Linear interpolated rotate the group over the Z axis, i.e. rotates the group depending on the Z position. Is not applied to nested groups.",
+      format: "<degrees0> ... <degreesN>",
       values: undefined,
+      defaultValue: undefined,
       completion: "0 90 0",
       dontWrite: undefined,
-      write: (v) => v.join(' '),
-      parse: PropertyParser.parseFloatArray.bind(null, "rotatez"),
+      write: function(value) { return value.join(' '); },
+      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
     },     
+    _smoothRotateMeta: {
+      meta: "smoothrotate<axis><over>",
+      hide: true,
+      title: "Smooth interpolated rotate.",
+      doc: "Smooth interpolated rotate. E.g. rotatey = 0 90 180 twists around in the y direction. Is not applied to nested groups. Without deform usually combined with lighting = sides.\nOptions: smoothrotatex, smoothrotatey, smoothrotatez",
+      format: "smoothrotate<axis><over> = <degrees0> ... <degreesN>"
+    },                 
+    smoothRotateX: {
+      name: 'smoothrotatex',
+      hide: true,
+      doc: "Smooth interpolated rotate the group over the X axis, i.e. rotates the group depending on the X position. Is not applied to nested groups.",
+      format: "<degrees0> ... <degreesN>",
+      values: undefined,
+      defaultValue: undefined,
+      completion: "0 90 0",
+      dontWrite: undefined,
+      write: function(value) { return value.join(' '); },
+      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+    },     
+    smoothRotateY: {
+      name: 'smoothrotatey',
+      hide: true,
+      doc: "Smooth interpolated rotate the group over the Y axis, i.e. rotates the group depending on the Y position. Is not applied to nested groups.",
+      format: "<degrees0> ... <degreesN>",
+      values: undefined,
+      defaultValue: undefined,
+      completion: "0 90 0",
+      dontWrite: undefined,
+      write: function(value) { return value.join(' '); },
+      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+    },     
+    smoothRotateZ: {
+      name: 'smoothrotatez',
+      hide: true,
+      doc: "Smooth interpolated rotate the group over the Z axis, i.e. rotates the group depending on the Z position. Is not applied to nested groups.",
+      format: "<degrees0> ... <degreesN>",
+      values: undefined,
+      defaultValue: undefined,
+      completion: "0 90 0",
+      dontWrite: undefined,
+      write: function(value) { return value.join(' '); },
+      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+    },     
+    _translateMeta: {
+      meta: "translate<axis><over>",
+      hide: true,
+      title: "Linear interpolated translate",
+      doc: "Linear interpolated translate in voxels. E.g. translateyx = 10 0 10 translates in a V shape. Is not applied to nested groups.\nOptions: translateyx, translatezx, translatexy, translatezy, translatexz, translateyz",
+      format: "translate<axis><over> = <offset0> ... <offsetN>"
+    },  
     translateYX: {
-      doc: "Translate Y over X, i.e. translates the group in the Y direction depending on the X position. Is not applied to nested groups.",
+      name: 'translateyx',
+      hide: true,
+      doc: "Linear interpolated translate Y over X, i.e. translates the group in the Y direction depending on the X position. Is not applied to nested groups.",
       format: "<offset0> <offset1> ... <offsetN>",
       values: undefined,
+      defaultValue: undefined,
       completion: "-1 1 -1",
       dontWrite: undefined,
-      write: (v) => v.join(' '),
-      parse: PropertyParser.parseFloatArray.bind(null, "translateyx"),
+      write: function(value) { return value.join(' '); },
+      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
     },     
     translateZX: {
-      doc: "Translate Z over X, i.e. translates the group in the Z direction depending on the X position. Is not applied to nested groups.",
+      name: 'translatezx',
+      hide: true,
+      doc: "Linear interpolated translate Z over X, i.e. translates the group in the Z direction depending on the X position. Is not applied to nested groups.",
       format: "<offset0> <offset1> ... <offsetN>",
       values: undefined,
+      defaultValue: undefined,
       completion: "-1 1 -1",
       dontWrite: undefined,
-      write: (v) => v.join(' '),
-      parse: PropertyParser.parseFloatArray.bind(null, "translatezx"),
+      write: function(value) { return value.join(' '); },
+      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
     },     
     translateXY: {
-      doc: "Translate X over Y, i.e. translates the group in the X direction depending on the Y position. Is not applied to nested groups.",
+      name: 'translatexy',
+      hide: true,
+      doc: "Linear interpolated translate X over Y, i.e. translates the group in the X direction depending on the Y position. Is not applied to nested groups.",
       format: "<offset0> <offset1> ... <offsetN>",
       values: undefined,
+      defaultValue: undefined,
       completion: "-1 1 -1",
       dontWrite: undefined,
-      write: (v) => v.join(' '),
-      parse: PropertyParser.parseFloatArray.bind(null, "translatexy"),
+      write: function(value) { return value.join(' '); },
+      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
     },
     translateZY: {
-      doc: "Translate Z over Y, i.e. translates the group in the Z direction depending on the Y position. Is not applied to nested groups.",
+      name: 'translatezy',
+      hide: true,
+      doc: "Linear interpolated translate Z over Y, i.e. translates the group in the Z direction depending on the Y position. Is not applied to nested groups.",
       format: "<offset0> <offset1> ... <offsetN>",
       values: undefined,
+      defaultValue: undefined,
       completion: "-1 1 -1",
       dontWrite: undefined,
-      write: (v) => v.join(' '),
-      parse: PropertyParser.parseFloatArray.bind(null, "translatezy"),
+      write: function(value) { return value.join(' '); },
+      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
     },       
     translateXZ: {
-      doc: "Translate X over Z, i.e. translates the group in the X direction depending on the Z position. Is not applied to nested groups.",
+      name: 'translatexz',
+      hide: true,
+      doc: "Linear interpolated translate X over Z, i.e. translates the group in the X direction depending on the Z position. Is not applied to nested groups.",
       format: "<offset0> <offset1> ... <offsetN>",
       values: undefined,
+      defaultValue: undefined,
       completion: "-1 1 -1",
       dontWrite: undefined,
-      write: (v) => v.join(' '),
-      parse: PropertyParser.parseFloatArray.bind(null, "translatexz"),
+      write: function(value) { return value.join(' '); },
+      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
     },       
     translateYZ: {
-      doc: "Translate Y over Z, i.e. translates the group in the Y direction depending on the Z position. Is not applied to nested groups.",
+      name: 'translateyz',
+      hide: true,
+      doc: "Linear interpolated translate Y over Z, i.e. translates the group in the Y direction depending on the Z position. Is not applied to nested groups.",
       format: "<offset0> <offset1> ... <offsetN>",
       values: undefined,
+      defaultValue: undefined,
       completion: "-1 1 -1",
       dontWrite: undefined,
-      write: (v) => v.join(' '),
-      parse: PropertyParser.parseFloatArray.bind(null, "translateyz"),
+      write: function(value) { return value.join(' '); },
+      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
     },
+    _smoothTranslateMeta: {
+      meta: "smoothtranslate<axis><over>",
+      hide: true,
+      title: "Smooth interpolated translate",
+      doc: "Smooth interpolated translate in voxels. E.g. translateyx = 10 0 10 translates in a V shape. Is not applied to nested groups.\nOptions: smoothtranslateyx, smoothtranslatezx, smoothtranslatexy, smoothtranslatezy, smoothtranslatexz, smoothtranslateyz",
+      format: "smoothtranslate<axis><over> = <offset0> ... <offsetN>"
+    },  
+    smoothTranslateYX: {
+      name: 'smoothtranslateyx',
+      hide: true,
+      doc: "Smooth interpolated translate Y over X, i.e. translates the group in the Y direction depending on the X position. Is not applied to nested groups.",
+      format: "<offset0> <offset1> ... <offsetN>",
+      values: undefined,
+      defaultValue: undefined,
+      completion: "-1 1 -1",
+      dontWrite: undefined,
+      write: function(value) { return value.join(' '); },
+      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+    },     
+    smoothTranslateZX: {
+      name: 'smoothtranslatezx',
+      hide: true,
+      doc: "Smooth interpolated translate Z over X, i.e. translates the group in the Z direction depending on the X position. Is not applied to nested groups.",
+      format: "<offset0> <offset1> ... <offsetN>",
+      values: undefined,
+      defaultValue: undefined,
+      completion: "-1 1 -1",
+      dontWrite: undefined,
+      write: function(value) { return value.join(' '); },
+      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+    },     
+    smoothTranslateXY: {
+      name: 'smoothtranslatexy',
+      hide: true,
+      doc: "Smooth interpolated translate X over Y, i.e. translates the group in the X direction depending on the Y position. Is not applied to nested groups.",
+      format: "<offset0> <offset1> ... <offsetN>",
+      values: undefined,
+      defaultValue: undefined,
+      completion: "-1 1 -1",
+      dontWrite: undefined,
+      write: function(value) { return value.join(' '); },
+      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+    },
+    smoothTranslateZY: {
+      name: 'smoothtranslatezy',
+      hide: true,
+      doc: "Smooth interpolated translate Z over Y, i.e. translates the group in the Z direction depending on the Y position. Is not applied to nested groups.",
+      format: "<offset0> <offset1> ... <offsetN>",
+      values: undefined,
+      defaultValue: undefined,
+      completion: "-1 1 -1",
+      dontWrite: undefined,
+      write: function(value) { return value.join(' '); },
+      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+    },       
+    smoothTranslateXZ: {
+      name: 'smoothtranslatexz',
+      hide: true,
+      doc: "Smooth interpolated translate X over Z, i.e. translates the group in the X direction depending on the Z position. Is not applied to nested groups.",
+      format: "<offset0> <offset1> ... <offsetN>",
+      values: undefined,
+      defaultValue: undefined,
+      completion: "-1 1 -1",
+      dontWrite: undefined,
+      write: function(value) { return value.join(' '); },
+      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+    },       
+    smoothTranslateYZ: {
+      name: 'smoothtranslateyz',
+      hide: true,
+      doc: "Smooth interpolated translate Y over Z, i.e. translates the group in the Y direction depending on the Z position. Is not applied to nested groups.",
+      format: "<offset0> <offset1> ... <offsetN>",
+      values: undefined,
+      defaultValue: undefined,
+      completion: "-1 1 -1",
+      dontWrite: undefined,
+      write: function(value) { return value.join(' '); },
+      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+    },
+    _bendMeta: {
+      meta: "bend<axis><over>",
+      hide: true,
+      title: "Bend the group",
+      doc: "Bends the group. E.g. bendxy = 90 10 bends x over y upwards 90 degreed to the right around a point 10 voxels to the right. Use negative values for bend to the left and/or from the top. Is not applied to nested groups.\nOptions: bendyx, bendzx, bendxy, bendzy, bendxz, bendyz",
+      format: "bend<axis><over> = <degrees> <center>"
+    },     
+    bendYX: {
+      name: 'bendyx',
+      hide: true,
+      doc: "Bends Y over X, i.e. bends the group in the Y direction depending on the X position. Is not applied to nested groups.",
+      format: "<degrees> <center>",
+      values: undefined,
+      allowUniform: false,
+      defaultValue: { x:undefined, y:undefined },
+      completion: "90 10",
+      dontWrite: undefined,
+      write: function(value) { return `${value.x} ${value.y}`; },
+      parse: function(value) { return PropertyParser.parseXYFloatNew(this, value); }
+    },     
+    bendZX: {
+      name: 'bendzx',
+      hide: true,
+      doc: "Bends Z over X, i.e. bends the group in the Z direction depending on the X position. Is not applied to nested groups.",
+      format: "<degrees> <center>",
+      values: undefined,
+      allowUniform: false,
+      defaultValue: { x:undefined, y:undefined },
+      completion: "90 10",
+      dontWrite: undefined,
+      write: function(value) { return `${value.x} ${value.y}`; },
+      parse: function(value) { return PropertyParser.parseXYFloatNew(this, value); }
+    },
+    bendXY: {
+      name: 'bendxy',
+      hide: true,
+      doc: "Bends X over Y, i.e. bends the group in the X direction depending on the Y position. Is not applied to nested groups.",
+      format: "<degrees> <center>",
+      values: undefined,
+      allowUniform: false,
+      defaultValue: { x:undefined, y:undefined },
+      completion: "90 10",
+      dontWrite: undefined,
+      write: function(value) { return `${value.x} ${value.y}`; },
+      parse: function(value) { return PropertyParser.parseXYFloatNew(this, value); }
+    },    
+    bendZY: {
+      name: 'bendzy',
+      hide: true,
+      doc: "Bends Z over Y, i.e. bends the group in the Z direction depending on the Y position. Is not applied to nested groups.",
+      format: "<degrees> <center>",
+      values: undefined,
+      allowUniform: false,
+      defaultValue: { x:undefined, y:undefined },
+      completion: "90 10",
+      dontWrite: undefined,
+      write: function(value) { return `${value.x} ${value.y}`; },
+      parse: function(value) { return PropertyParser.parseXYFloatNew(this, value); }
+    },       
+    bendXZ: {
+      name: 'bendxz',
+      hide: true,
+      doc: "Bends X over Z, i.e. bends the group in the X direction depending on the Z position. Is not applied to nested groups.",
+      format: "<degrees> <center>",
+      values: undefined,
+      allowUniform: false,
+      defaultValue: { x:undefined, y:undefined },
+      completion: "90 10",
+      dontWrite: undefined,
+      write: function(value) { return `${value.x} ${value.y}`; },
+      parse: function(value) { return PropertyParser.parseXYFloatNew(this, value); }
+    },       
+    bendYZ: {
+      name: 'bendyz',
+      hide: true,
+      doc: "Bends Y over Z, i.e. bends the group in the Y direction depending on the Z position. Is not applied to nested groups.",
+      format: "<degrees> <center>",
+      values: undefined,
+      allowUniform: false,
+      defaultValue: { x:undefined, y:undefined },
+      completion: "90 10",
+      dontWrite: undefined,
+      write: function(value) { return `${value.x} ${value.y}`; },
+      parse: function(value) { return PropertyParser.parseXYFloatNew(this, value); }
+    }    
   };
 })();
 
@@ -3352,7 +4015,7 @@ class GroupReader {
       if (!found) {
         throw {
             name: 'SyntaxError',
-            message: `(${modelName}) Unknown property '${property}' found in group.`
+            message: `(${modelName}) Unknown property '${property ? property : parameters[property]}' found in group.`
         };                  
       }
     }
@@ -3386,6 +4049,36 @@ class GroupReader {
         name: 'ModelError',
         message: `(${modelName}) Group '${settings.id}' uses translation, so it cannot also have a position.`,
       };
+    } 
+    if ((settings.scaleYX && settings.smoothScaleYX) ||
+        (settings.scaleZX && settings.smoothScaleZX) ||
+        (settings.scaleXY && settings.smoothScaleXY) ||
+        (settings.scaleZY && settings.smoothScaleZY) ||
+        (settings.scaleXZ && settings.smoothScaleXZ) ||
+        (settings.scaleYZ && settings.smoothScaleYZ))   {
+      throw {
+        name: 'ModelError',
+        message: `(${modelName}) Group '${settings.id}' cannot combine linear and smooth scale.. in the same direction.`,
+      };
+    }    
+    if ((settings.rotateX && settings.smoothRotateX) ||
+        (settings.rotateY && settings.smoothRotateY) ||
+        (settings.rotateZ && settings.smoothRotateZ))   {
+      throw {
+        name: 'ModelError',
+        message: `(${modelName}) Group '${settings.id}' cannot combine linear and smooth rotate.. in the same direction.`,
+      };
+    }    
+    if ((settings.translateYX && settings.smoothTranslateYX) ||
+        (settings.translateZX && settings.smoothTranslateZX) ||
+        (settings.translateXY && settings.smoothTranslateXY) ||
+        (settings.translateZY && settings.smoothTranslateZY) ||
+        (settings.translateXZ && settings.smoothTranslateXZ) ||
+        (settings.translateYZ && settings.smoothTranslateYZ))   {
+      throw {
+        name: 'ModelError',
+        message: `(${modelName}) Group '${settings.id}' cannot combine linear and smooth translate.. in the same direction.`,
+      };
     }    
   }
 }
@@ -3397,16 +4090,15 @@ class GroupReader {
 class GroupWriter { 
   
   static write(group) {
-    let definitions = SVOX.GROUPDEFINITIONS;
     
     let out = [];
-    for (const property in group) {
-      // Don't write id's for groups that did not have a name to start with
-      if (property === 'id' && group[property].startsWith('UnnamedGroup'))
-        continue;
-      
-      let def = definitions[property];
-      if (def !== undefined && group[property] !== undefined) {
+    for (const property in SVOX.GROUPDEFINITIONS) {     
+      let def = SVOX.GROUPDEFINITIONS[property];
+      if (group[property] !== undefined) {
+        // Don't write id's for groups that did not have a name to start with
+        if (property === 'id' && group[property].startsWith('UnnamedGroup'))
+          continue;
+        
         let value = def.write ? def.write(group[property]) : `${group[property]}`;
         if (value !== def.dontWrite) {
           out.push(`${property.toLowerCase()} = ${value}`)
@@ -3441,786 +4133,938 @@ class GroupWriter {
     // The order determines the write order
 
     _main: {
-      doc: "Material properties"
+      title: "Material properties"
     },
     type: {
+      name:'type',
       doc: "The material type.",
       format: undefined,
-      values: ["standard","phong","lambert","basic","toon","matcap","normal"],
+      values: [ "basic", "lambert", "phong", "standard", "physical", "toon", "matcap", "normal" ],
+      defaultValue: 'standard',
       completion: "basic",
       base, basic, lambert, phong, standard, physical, toon, matcap, normal,
       dontWrite: "standard",
       write: undefined,
-      parse: PropertyParser.parseEnum.bind(null, "type", [ "basic", "phong", "lambert", "standard", "physical", "toon", "matcap", "normal" ], "standard"),
+      parse: function(value) { return PropertyParser.parseEnumNew(this, value); }
     },
     name: {
+      name:'name',
       doc: "Internal material name (different names means extra materials / draw calls!).",
       format: "<string>",
       values: undefined,
+      defaultValue: undefined,
       completion: "MyMaterial",
       base, basic, lambert, phong, standard, physical, toon, matcap, normal,
       dontWrite: undefined,
       write: undefined,
-      parse: PropertyParser.parseName.bind(null, "name", undefined),
+      parse: function(value) { return PropertyParser.parseNameNew(this, value); }
     },
     group: {
+      name:'group',
       doc: "The group Id from a group, to allow for rotation and translation of this separate group.",
       format: "<string>",
       values: undefined,
+      defaultValue: '*',
       completion: "",
       basic, lambert, phong, standard, physical, toon, matcap, normal,
       dontWrite: '*',
       write: undefined,
-      parse: PropertyParser.parseName.bind(null, "group", '*'),
+      parse: function(value) { return PropertyParser.parseNameNew(this, value); }
     },    
     lighting: {
+      name:'lighting',
       doc: "The lighting of the surface. Smooth, flat (triangles), quad (rectangles), both (smooth with clamped sides) or sides (smooth sides with hard edges).",
       format: undefined,
       values: ["flat","quad","smooth","both","sides"],
+      defaultValue: 'flat',
       completion: "",
       basic, lambert, phong, standard, physical, toon, matcap, normal,
       dontWrite: "flat",
       write: undefined,
-      parse: PropertyParser.parseEnum.bind(null, "lighting", ["flat", "quad", "smooth", "both", "sides"], "flat"),
+      parse: function(value) { return PropertyParser.parseEnumNew(this, value); }
     },
     side: {
+      name:'side',
       doc: "Defines which side of faces will be rendered.",
       format: undefined,
       values: ["front","back","double"],
+      defaultValue: 'front',
       completion: "double",
       base, basic, lambert, phong, standard, physical, toon, matcap, normal,
       dontWrite: "front",
       write: undefined,
-      parse: PropertyParser.parseEnum.bind(null, "side", ["front", "back", "double"], "front"),
+      parse: function(value) { return PropertyParser.parseEnumNew(this, value); }
     },
     shadowSide: {
+      name:'shadowside',
       doc: "Defines which side of faces cast shadows. Note, this is only applied to real lights, it is ignored for baked shadows!!",
       format: undefined,
       values: ["front","back","double"],
+      defaultValue: undefined,
       completion: "double",
       base, basic, lambert, phong, standard, physical, toon, matcap, normal,
       dontWrite: undefined,
       write: undefined,
-      parse: PropertyParser.parseEnum.bind(null, "shadowSide", ["front", "back", "double"], undefined),
+      parse: function(value) { return PropertyParser.parseEnumNew(this, value); }
     },
     wireframe: {
+      name:'wireframe',
       doc: "Render the material as wireframe.",
       format: undefined,
       values: ["true","false"],
+      defaultValue: undefined,
       completion: "true",
       base, basic, lambert, phong, standard, physical, toon, normal,
       dontWrite: undefined,
       write: undefined,
-      parse: PropertyParser.parseBoolean.bind(null, "wireframe", undefined),
+      parse: function(value) { return PropertyParser.parseBooleanNew(this, value); }
     },        
     _surface: {
-      doc: "Surface properties"
+      title: "Surface properties"
     },
     shininess: {
+      name:'shininess',
       doc: "A higher value (>1000) gives a sharper specular highlight.",
       format: "<shininess>",
       values: undefined,
+      defaultValue: 30,
       completion: "1000",
       base, phong, 
       dontWrite: "30",
       write: undefined,
-      parse: PropertyParser.parseFloat.bind(null, "shininess", 30),
+      parse: function(value) { return PropertyParser.parseFloatNew(this, value); }
     },
     reflectivity: {
+      name:'reflectivity',
       doc: "Degree of reflectivity. Default is 0.5. For physical also changes refraction. Do not forget to set envmap for basic, lambert and phong materials!",
       format: "<reflectivity>",
       values: undefined,
+      defaultValue: undefined,
       completion: "1",
       base, basic, lambert, phong, physical, 
       dontWrite: undefined,
       write: undefined,
-      parse: PropertyParser.parseFloat.bind(null, "reflectivity", undefined),
+      parse: function(value) { return PropertyParser.parseFloatNew(this, value); }
     },
     combine: {
+      name:'combine',
       doc: "How to combine the environment map, if any, with the diffuse color.",
       format: undefined,
       values: ["add","multiply","mix"],
+      defaultValue: 'mix',
       completion: 'add',
       base, basic, lambert, phong, 
       dontWrite: "mix",
       write: undefined,
-      parse: PropertyParser.parseEnum.bind( null, "combine", ["multiply", "mix", "add"], "mix"),
+      parse: function(value) { return PropertyParser.parseEnumNew(this, value); }
     },
     roughness: {
+      name:'roughness',
       doc: "How rough the material appears. 0.0 means a smooth mirror reflection.",
       format: "<float>",
       values: undefined,
+      defaultValue: 1,
       completion: 0.5,
       base, standard, physical, 
       dontWrite: "1",
       write: undefined,
-      parse: PropertyParser.parseFloat.bind(null, "roughness", 1),
+      parse: function(value) { return PropertyParser.parseFloatNew(this, value); }
     },
     metalness: {
+      name:'metalness',
       doc: "How much the material is like a metal. ",
       format: "<float>",
       values: undefined,
+      defaultValue: 0,
       completion: 0.5,
       base, standard, physical, 
       dontWrite: "0",
       write: undefined,
-      parse: PropertyParser.parseFloat.bind(null, "metalness", 0),
+      parse: function(value) { return PropertyParser.parseFloatNew(this, value); }
     },
     _maps: {
-      doc: "Maps"
+      title: "Maps"
     },
     map: {
+      name:'map',
       doc: "Model texture. An alpha channel should be combined with transparent or alphatest.",
       format: "<textureid:RGB>",
       values: undefined,
+      defaultValue: undefined,
       completion: "",
       base, basic, lambert, phong, standard, physical, toon, matcap, 
       dontWrite: undefined,
       write: undefined,
-      parse: PropertyParser.parseName.bind(null, "map", undefined),
+      parse: function(value) { return PropertyParser.parseNameNew(this, value); } 
     },
     mapTransform: {
+      name:'maptransform',
       doc: "Shift, scale or rotate textures.",
       format: "<width> <height> [<xoffset> <yoffset> [<rotation>]]",
       values: undefined,
+      defaultValue: undefined,
       completion: "2 2 0.5 0.5 45",
       base, basic, lambert, phong, standard, physical, toon, matcap, normal,
       dontWrite: "-1 -1",
-      write: (v) => PropertyWriter.writeMapTransform(v),
-      parse: PropertyParser.parseMapTransform.bind(null, "maptransform"),
+      write: function(value) { return PropertyWriter.writeMapTransform(value); },
+      parse: function(value) { return PropertyParser.parseMapTransformNew(this, value); }
     },
     normalMap: {
+      name:'normalmap',
       doc: "The texture to create a normal map (e.g. visual bumps or ridges). ",
       format: "<textureid:Normal>",
       values: undefined,
+      defaultValue: undefined,
       completion: "",
       base, lambert, phong, standard, physical, toon, matcap, normal,
       dontWrite: undefined,
       write: undefined,
-      parse: PropertyParser.parseName.bind(null, "normalmap", undefined),
+      parse: function(value) { return PropertyParser.parseNameNew(this, value); }
     },
     normalScale: {
+      name:'normalscale',
       doc: "How much the normal map affects the material. Allows for two values.",
       format: "<scale>|<xscale> <yscale>",
       base, lambert, phong, standard, physical, toon, matcap, normal,
       values: undefined,
+      defaultValue: { x:1, y:1 },
+      allowUniform: true,
       completion: "1 1",
       dontWrite: "1 1",
-      write: (v) => `${v.x} ${v.y}`,
-      parse: PropertyParser.parseXYFloat.bind(null, "normalscale", true, 1, 1),
+      write: function(value) { return `${value.x} ${value.y}`; },
+      parse: function(value) { return PropertyParser.parseXYFloatNew(this, value); }
     },
     bumpMap: {
+      name:'bumpmap',
       doc: "The texture to create a bump map (e.g. visual bumps or ridges). ",
       format: "<textureid:Greyscale>",
       values: undefined,
+      defaultValue: undefined,
       completion: "",
       base, lambert, phong, standard, physical, toon, matcap, normal,
       dontWrite: undefined,
       write: undefined,
-      parse: PropertyParser.parseName.bind(null, "bumpmap", undefined),
+      parse: function(value) { return PropertyParser.parseNameNew(this, value); }
     },
     bumpScale: {
+      name:'bumpscale',
       doc: "How much the bump map affects the material.",
       format: "<float>",
       values: undefined,
+      defaultValue: 1,
       completion: "1",
       base, lambert, phong, standard, physical, toon, matcap, normal,
       dontWrite: "1",
       write: undefined,
-      parse: PropertyParser.parseFloat.bind(null, "bumpscale", 1),
+      parse: function(value) { return PropertyParser.parseFloatNew(this, value); }
     },
     envMap: {
+      name:'envmap',
       doc: "The environment map. You must set this for basic, lambert and phong materials as it is only automatically set for standard and physical materials!",
       format: "<textureid:RGB>",
       values: undefined,
+      defaultValue: undefined,
       completion: "env",
       base, basic, lambert, phong, standard, physical, 
       dontWrite: undefined,
       write: undefined,
-      parse: PropertyParser.parseName.bind(null, "envmap", undefined),
+      parse: function(value) { return PropertyParser.parseNameNew(this, value); }
     },
     envMapIntensity: {
+      name:'envmapintensity',
       doc: "Scales the effect of the environment map by multiplying its color.",
       format: "<float>",
       values: undefined,
+      defaultValue: 1,
       completion: "1",
       base, standard, physical, 
       dontWrite: "1",
       write: undefined,
-      parse: PropertyParser.parseFloat.bind(null, "envmapintensity", 1),
+      parse: function(value) { return PropertyParser.parseFloatNew(this, value); }
     },
     roughnessMap: {
+      name:'roughnessmap',
       doc: "The green channel alters the roughness of the material (requires roughness > 0).",
       format: "<textureid:Green-channel>",
       values: undefined,
+      defaultValue: undefined,
       completion: "",
       base, standard, physical, 
       dontWrite: undefined,
       write: undefined,
-      parse: PropertyParser.parseName.bind(null, "roughnessmap", undefined),
+      parse: function(value) { return PropertyParser.parseNameNew(this, value); }
     },
     metalnessMap: {
+      name:'metalnessmap',
       doc: "The blue channel is used, multiplied by metalness (i.e. use metalness = 1)",
       format: "<textureid:Blue-channel>",
       values: undefined,
+      defaultValue: undefined,
       completion: "",
       base, standard, physical, 
       dontWrite: undefined,
       write: undefined,
-      parse: PropertyParser.parseName.bind(null, "metalnessmap", undefined),
+      parse: function(value) { return PropertyParser.parseNameNew(this, value); }
     },
     matcap: {
+      name:'matcap',
       doc: "The matcap map. See https://observablehq.com/@makio135/matcaps",
       format: "<textureid:RGB>",
       values: undefined,
+      defaultValue: undefined,
       completion: "",
       base, matcap, 
       dontWrite: undefined,
       write: undefined,
-      parse: PropertyParser.parseName.bind(null, "matcap", undefined),
+      parse: function(value) { return PropertyParser.parseNameNew(this, value); }
     },
     _transparency:{
-      doc: "Transparency properties"
+      title: "Transparency properties"
     },
     opacity: {
+      name:'opacity',
       doc: "A value of 0.0 indicates fully transparent, 1.0 is fully opaque.",
       format: "<float>",
       values: undefined,
+      defaultValue: 1,
       completion: "1",
       base, basic, lambert, phong, standard, physical, toon, matcap, normal,
       dontWrite: "1",
       write: undefined,
-      parse: PropertyParser.parseFloat.bind(null, "opacity", 1),
+      parse: function(value) { return PropertyParser.parseFloatNew(this, value); }
     },
     transparent: {
+      name:'transparent',
       doc: "Defines whether this material is transparent. Mostly set automatically.",
       format: undefined,
       values: ["true","false"],
+      defaultValue: undefined,
       completion: true,
       base, basic, lambert, phong, standard, physical, toon, matcap, normal,
       dontWrite: undefined,
       write: undefined,
-      parse: PropertyParser.parseBoolean.bind(null, "transparent", undefined),
+      parse: function(value) { return PropertyParser.parseBooleanNew(this, value); }
     },
     alphaTest: {
+      name:'alphatest',
       doc: "The material will not see through if the opacity in the map is lower than this value. ",
       format: "<float>",
       values: undefined,
+      defaultValue: 0,
       completion: "0.5",
       base, basic, lambert, phong, standard, physical, toon, matcap,
       dontWrite: "0",
       write: undefined,
-      parse: PropertyParser.parseFloat.bind(null, "alphatest", 0),
+      parse: function(value) { return PropertyParser.parseFloatNew(this, value); }
     },
     alphaToCoverage: {
+      name:'alphatocoverage',
       doc: "Enable alpha to coverage to improve foliage transparency handling.",
       format: undefined,
       values: ["true","false"],
+      defaultValue: undefined,
       completion: true,
       base, basic, lambert, phong, standard, physical, toon, matcap,
       dontWrite: undefined,
       write: undefined,
-      parse: PropertyParser.parseBoolean.bind(null, "alphatocoverage", undefined),
+      parse: function(value) { return PropertyParser.parseBooleanNew(this, value); }
     },
     alphaMap: {
+      name:'alphamap',
       doc: "Controls the opacity (0: transparent; 255: opaque).",
       format: "<textureid:Green-channel>",
       values: undefined,
+      defaultValue: undefined,
       completion: "",
       base, basic, lambert, phong, standard, physical, toon, matcap, 
       dontWrite: undefined,
       write: undefined,
-      parse: PropertyParser.parseName.bind(null, "alphamap", undefined),
+      parse: function(value) { return PropertyParser.parseNameNew(this, value); }
     },
     _emissive: {
-      doc: "Emissive properties"
+      title: "Emissive properties"
     },
     emissive: {
+      name:'emissive',
       doc: "Emissive (light) color of the material.",
       format: "<#RGB|#RRGGBB>",
       values: undefined,
+      defaultValue: undefined,
       completion: "#FFF",
       base, lambert, phong, standard, physical, toon, 
       dontWrite: undefined,
       write: undefined,
-      parse: PropertyParser.parseColor.bind(null, "emissive", undefined),
+      parse: function(value) { return PropertyParser.parseColorNew(this, value); }
     },
     emissiveIntensity: {
+      name:'emissiveintensity',
       doc: "The intensity of the emissive light.",
       format: "<float>",
       values: undefined,
+      defaultValue: 1,
       completion: "1",
       base, lambert, phong, standard, physical, toon, 
       dontWrite: "1",
       write: undefined,
-      parse: PropertyParser.parseFloat.bind(null, "emissiveintensity", 1),
+      parse: function(value) { return PropertyParser.parseFloatNew(this, value); }
     },
     emissiveMap: {
+      name:'emissivemap',
       doc: "Emissive (glow) map (requires emissive color not black and emissiveintensity > 0)",
       format: "<textureid:RGB>",
       values: undefined,
+      defaultValue: undefined,
       completion: "",
       base, lambert, phong, standard, physical, toon, 
       dontWrite: undefined,
       write: undefined,
-      parse: PropertyParser.parseName.bind(null, "emissivemap", undefined),
+      parse: function(value) { return PropertyParser.parseNameNew(this, value); } 
     },
     _specular: {
-      doc: "Specular properties"
+      title: "Specular properties"
     },
     specular: {
+      name:'specular',
       doc: "Specular color of the material. Default is #111 (very dark grey).",
       format: "<#RGB|#RRGGBB>",
       values: undefined,
+      defaultValue: '#111',
       completion: "#888",
       base, phong, 
       dontWrite: "#111",
       write: undefined,
-      parse: PropertyParser.parseColor.bind(null, "specular", "#111"),
+      parse: function(value) { return PropertyParser.parseColorNew(this, value); } 
     },
     specularMap: {
+      name:'specularmap',
       doc: "Specular map used by the material. Default is null.",
       format: "<textureid:Greyscale>",
       values: undefined,
+      defaultValue: undefined,
       completion: "",
       base, basic, lambert, phong, 
       dontWrite: undefined,
       write: undefined,
-      parse: PropertyParser.parseName.bind(null, "specularmap", undefined),
+      parse: function(value) { return PropertyParser.parseNameNew(this, value); }
     },
     specularColor: {
+      name:'specular',
       doc: "Specular color of the material. Default is #FFF (white).",
       format: "<#RGB|#RRGGBB>",
       values: undefined,
+      defaultValue: '#FFF',
       completion: "#FF0",
       base, physical, 
       dontWrite: "#FFF",
       write: undefined,
-      parse: PropertyParser.parseColor.bind(null, "specular", "#FFF"),
+      parse: function(value) { return PropertyParser.parseColorNew(this, value); }
     },
     specularColorMap: {
+      name:'specularcolormap',
       doc: "The RGB channels of this texture are multiplied against .specularColor.",
       format: "<textureid:RGB>",
       values: undefined,
+      defaultValue: undefined,
       completion: "",
       base, physical, 
       dontWrite: undefined,
       write: undefined,
-      parse: PropertyParser.parseName.bind(null, "specularcolormap", undefined),
+      parse: function(value) { return PropertyParser.parseNameNew(this, value); }
     },
     specularIntensity: {
+      name:'specularintensity',
       doc: "A float that scales the amount of specular reflection for non-metals only.",
       format: "<float>",
       values: undefined,
+      defaultValue: 1,
       completion: "1",
       base, physical, 
       dontWrite: "1",
       write: undefined,
-      parse: PropertyParser.parseFloat.bind(null, "specularintensity", 1),
+      parse: function(value) { return PropertyParser.parseFloatNew(this, value); }
     },
     specularIntensityMap: {
+      name:'specularintensitymap',
       doc: "The alpha channel of this texture is multiplied against specularintensity.",
       format: "<textureid:Alpha-channel>",
       values: undefined,
+      defaultValue: undefined,
       completion: "",
       base, physical, 
       dontWrite: undefined,
       write: undefined,
-      parse: PropertyParser.parseName.bind(null, "specularintensitymap", undefined),
+      parse: function(value) { return PropertyParser.parseNameNew(this, value); }
     },
     _refraction: {
-      doc: "Refraction properties"
+      title: "Refraction properties"
     },
     refractionRatio: {
+      name:'refractionratio',
       doc: "Index of refraction of air (~1) divided by the index of refraction of the material.",
       format: "<float>",
       values: undefined,
+      defaultValue: undefined,
       completion: "0.9",
       base, basic, lambert, phong, 
       dontWrite: undefined,
       write: undefined,
-      parse: PropertyParser.parseFloat.bind(null, "refractionratio", undefined),
+      parse: function(value) { return PropertyParser.parseFloatNew(this, value); }
     },
     ior: {
+      name:'ior',
       doc: "Index-of-refraction for non-metallic materials, from 1.0 to 2.333. Default is 1.5.",
       format: "<float>",
       values: undefined,
+      defaultValue: undefined,
       completion: "1.5",
       base, physical, 
       dontWrite: undefined,
       write: undefined,
-      parse: PropertyParser.parseFloat.bind(null, "ior", undefined),
+      parse: function(value) { return PropertyParser.parseFloatNew(this, value); }
     },
     thickness: {
+      name:'thickness',
       doc: "The thickness of the volume beneath the surface for refraction.",
       format: "<float>",
       values: undefined,
+      defaultValue: 0,
       completion: "1",
       base, physical, 
       dontWrite: "0",
       write: undefined,
-      parse: PropertyParser.parseFloat.bind(null, "thickness", 0),
+      parse: function(value) { return PropertyParser.parseFloatNew(this, value); }
     },
     thicknessMap: {
+      name:'thicknessmap',
       doc: "G channel defines the thickness. Multiplied by thickness.",
       format: "<textureid:Green-channel>",
       values: undefined,
+      defaultValue: undefined,
       completion: "",
       base, physical, 
       dontWrite: undefined,
       write: undefined,
-      parse: PropertyParser.parseName.bind(null, "thicknessmap", undefined),
+      parse: function(value) { return PropertyParser.parseNameNew(this, value); }
     },
     transmission: {
+      name:'transmission',
       doc: "Degree of transmission (or optical transparency), from 0.0 to 1.0.",
       format: "<float>",
       values: undefined,
+      defaultValue: 1,
       completion: "0.5",
       base, physical, 
       dontWrite: "1",
       write: undefined,
-      parse: PropertyParser.parseFloat.bind(null, "transmission", 1),
+      parse: function(value) { return PropertyParser.parseFloatNew(this, value); }
     },
     transmissionMap: {
+      name:'transmissionmap',
       doc: "The red channel of this texture is multiplied against transmission.",
       format: "<textureid:Red-channel>",
       values: undefined,
+      defaultValue: undefined,
       completion: "",
       base, physical, 
       dontWrite: undefined,
       write: undefined,
-      parse: PropertyParser.parseName.bind(null, "transmissionmap", undefined),
+      parse: function(value) { return PropertyParser.parseNameNew(this, value); }
     },
     attenuationColor: {
+      name:'attenuationcolor',
       doc: "The color that white light turns into due to absorption at the attenuation distance.",
       format: "<#RGB|#RRGGBB>",
       values: undefined,
+      defaultValue: '#FFF',
       completion: "#F88",
       base, physical, 
       dontWrite: "#FFF",
       write: undefined,
-      parse: PropertyParser.parseColor.bind(null, "attenuationcolor", "#FFF"),
+      parse: function(value) { return PropertyParser.parseColorNew(this, value); }
     },
     attenuationDistance: {
+      name:'attenuationdistance',
       doc: "The average distance (related to the thickness value) that light travels before interacting with a particle.",
       format: "<float>",
       values: undefined,
+      defaultValue: Infinity,
       completion: "1",
       base, physical, 
       dontWrite: "Infinity",
       write: undefined,
-      parse: PropertyParser.parseFloat.bind(null, "attenuationdistance", Infinity),
+      parse: function(value) { return PropertyParser.parseFloatNew(this, value); }
     },
     _clearcoat: {
-      doc: "Clearcoat properties"
+      title: "Clearcoat properties"
     },
     clearcoat: {
+      name:'clearcoat',
       doc: "The intensity of the clear coat layer, from 0.0 to 1.0. ",
       format: "<float>",
       values: undefined,
+      defaultValue: 0,
       completion: "1",
       base, physical, 
       dontWrite: "0",
       write: undefined,
-      parse: PropertyParser.parseFloat.bind(null, "clearcoat", 0),
+      parse: function(value) { return PropertyParser.parseFloatNew(this, value); }
     },
     clearcoatMap: {
+      name:'clearcoatmap',
       doc: "The red channel of this texture is multiplied against clearcoat.",
       format: "<textureid:Red-channel>",
       values: undefined,
+      defaultValue: undefined,
       completion: "",
       base, physical, 
       dontWrite: undefined,
       write: undefined,
-      parse: PropertyParser.parseName.bind(null, "clearcoatmap", undefined),
+      parse: function(value) { return PropertyParser.parseNameNew(this, value); }
     },
     clearcoatNormalMap: {
+      name:'clearcoatnormalmap',
       doc: "Enables independent normals for the clear coat layer.",
       format: "<textureid:Normal>",
-      values: undefined,
-      completion: "",
       base, physical, 
+      values: undefined,
+      defaultValue: undefined,
+      completion: "",
       dontWrite: undefined,
       write: undefined,
-      parse: PropertyParser.parseName.bind(null, "clearcoatnormalmap", undefined),
+      parse: function(value) { return PropertyParser.parseNameNew(this, value); }
     },
     clearcoatNormalScale: {
+      name:'normalscale',
       doc: "How much the clearcoatnormalmap affects the clear coat layer, from (0,0) to (1,1).",
       format: "<scale>|<xscale> <yscale>",
-      values: undefined,
-      completion: "1 1",
       base, physical, 
+      values: undefined,
+      defaultValue: { x:1, y:1 },
+      allowUniform: true,
+      completion: "1 1",
       dontWrite: "1 1",
-      write: (v) => `${v.x} ${v.y}`,
-      parse: PropertyParser.parseXYFloat.bind(null, "normalscale", true, 1, 1),
+      write: function(value) { return `${value.x} ${value.y}`; },
+      parse: function(value) { return PropertyParser.parseXYFloatNew(this, value); }
     },
     clearcoatRoughness: {
+      name:'clearcoatroughness',
       doc: "Roughness of the clear coat layer, from 0.0 to 1.0. Default is 0.0.",
       format: "<float>",
-      values: undefined,
-      completion: "0.5",
       base, physical, 
+      values: undefined,
+      defaultValue: 0,
+      completion: "0.5",
       dontWrite: "0",
       write: undefined,
-      parse: PropertyParser.parseFloat.bind(null, "clearcoatroughness", 0),
+      parse: function(value) { return PropertyParser.parseFloatNew(this, value); }
     },
     clearcoatRoughnessMap: {
+      name:'clearcoatroughnessmap',
       doc: "Requires clearcoatroughness > 1.",
       format: "<textureid:Green-channel>",
-      values: undefined,
-      completion: "",
       base, physical, 
+      values: undefined,
+      defaultValue: undefined,
+      completion: "",
       dontWrite: undefined,
       write: undefined,
-      parse: PropertyParser.parseName.bind(null, "clearcoatroughnessmap", undefined),
+      parse: function(value) { return PropertyParser.parseNameNew(this, value); }
     },
     _displacement:{
-      doc: "Displacement properties",
+      title: "Displacement properties",
     },
     displacementMap: {
+      name:'displacementmap',
       doc: "White=high. Flat planes, a normalmap and simplify = false work best.",
       format: "<textureid:Greyscale>",
-      values: undefined,
-      completion: "",
       base, lambert, phong, standard, physical, toon, matcap, normal,
+      values: undefined,
+      defaultValue: undefined,
+      completion: "",
       dontWrite: undefined,
       write: undefined,
-      parse: PropertyParser.parseName.bind(null, "displacementmap", undefined),
+      parse: function(value) { return PropertyParser.parseNameNew(this, value); }
     },
     displacementScale: {
+      name:'displacementscale',
       doc: "How much the displacement map affects the mesh.",
       format: "<float>",
-      values: undefined,
-      completion: "1",
       base, lambert, phong, standard, physical, toon, matcap, normal,
+      values: undefined,
+      defaultValue: 1,
+      completion: "1",
       dontWrite: "1",
       write: undefined,
-      parse: PropertyParser.parseFloat.bind(null, "displacementscale", 1),
+      parse: function(value) { return PropertyParser.parseFloatNew(this, value); }
     },
     displacementBias: {
+      name:'displacementbias',
       doc: "The offset of the displacement map's values on the mesh's vertices. ",
       format: "<float>",
-      values: undefined,
-      completion: "0",
       base, lambert, phong, standard, physical, toon, matcap, normal,
+      values: undefined,
+      defaultValue: 0,
+      completion: "0",
       dontWrite: "0",
       write: undefined,
-      parse: PropertyParser.parseFloat.bind(null, "displacementbias", 0),
+      parse: function(value) { return PropertyParser.parseFloatNew(this, value); }
     },
     _effects: {
-      doc: "Effects properties"
+      title: "Effects properties"
     },
     blending: {
+      name:'blending',
       doc: "Blending mode.",
       format: undefined,
-      values: ["no","normal","additive","subtractive","multiply"],
-      completion: "additive",
       base, basic, lambert, phong, standard, physical, toon, matcap, normal,
+      values: ["no","normal","additive","subtractive","multiply"],
+      defaultValue: 'normal',
+      completion: "additive",
       dontWrite: "normal",
       write: undefined,
-      parse: PropertyParser.parseEnum.bind(null, "blending", ["no", "normal", "additive", "subtractive", "multiply"], "normal"),
+      parse: function(value) { return PropertyParser.parseEnumNew(this, value) }
     },
     dithering: {
+      name:'dithering',
       doc: "Whether to apply dithering to remove the appearance of banding in slow gradients.",
       format: undefined,
-      values: ["true","false"],
-      completion: "true",
       base, basic, lambert, phong, standard, physical, toon, matcap, normal,
+      values: ["true","false"],
+      defaultValue: false,
+      completion: "true",
       dontWrite: "false",
       write: undefined,
-      parse: PropertyParser.parseBoolean.bind(null, "dithering", false),
+      parse: function(value) { return PropertyParser.parseBooleanNew(this, value) }
     },
     fog: {
+      name:'fog',
       doc: "Whether the material is affected by fog in a scene. Default is true.",
       format: undefined,
-      values: ["true","false"],
-      completion: true,
       base, basic, lambert, phong, standard, physical, toon, matcap,
+      values: ["true","false"],
+      defaultValue: true,
+      completion: true,
       dontWrite: "true",
       write: undefined,
-      parse: PropertyParser.parseBoolean.bind(null, "fog", true),
+      parse: function(value) { return PropertyParser.parseBooleanNew(this, value) }
     },
     lights: {
+      name:'lights',
       doc: "Whether Smooth Voxel lights affect this surface.",
       format: undefined,
-      values: ["true","false"],
-      completion: false,
       basic, lambert, phong, standard, physical, toon, matcap, 
+      values: ["true","false"],
+      defaultValue: true,
+      completion: false,
       dontWrite: "true",
       write: undefined,
-      parse: PropertyParser.parseBoolean.bind(null, "lights", true),
+      parse: function(value) { return PropertyParser.parseBooleanNew(this, value) }
     },
     castShadow: {
+      name:'castshadow',
       doc: "Defines whether this material casts baked shadows (and ao!). Add castshadow = false to materials that have atvoxel lights.",
       format: undefined,
-      values: ["true","false"],
-      completion: "false",
       basic, lambert, phong, standard, physical, toon, matcap, normal,
+      values: ["true","false"],
+      defaultValue: true,
+      completion: "false",
       dontWrite: "true",
       write: undefined,
-      parse: PropertyParser.parseBoolean.bind(null, "castShadow", true),
+      parse: function(value) { return PropertyParser.parseBooleanNew(this, value) }
     },
     receiveShadow: {
+      name:'receiveshadow',
       doc: "Defines whether this material receives baked shadows (and ao!). By default materials receive baked shadows if a light with castshadow = true is present.",
       format: undefined,
-      values: ["true","false"],
-      completion: "false",
       basic, lambert, phong, standard, physical, toon, matcap,
+      values: ["true","false"],
+      defaultValue: true,
+      completion: "false",
       dontWrite: "true",
       write: undefined,
-      parse: PropertyParser.parseBoolean.bind(null, "receiveShadow", true),
+      parse: function(value) { return PropertyParser.parseBooleanNew(this, value) }
     },      
     ao: {
+      name:'ao',
       doc: "Calculate ambient occlusion.",
       format: "<#RGB|#RRGGBB> <maxdistance> [<intensity>] [<angle>]",
-      values: undefined,
-      completion: "#400 5 0.5",
       basic, lambert, phong, standard, physical, toon, matcap, 
+      values: undefined,
+      defaultValue: undefined,
+      completion: "#400 5 0.5",
       dontWrite: undefined,
-      write: (v) => PropertyWriter.writeAo(v),
-      parse: PropertyParser.parseAo.bind(null, "ao"),
+      write: function(value) { return PropertyWriter.writeAo(value); },
+      parse: function(value) { return PropertyParser.parseAoNew(this, value); }
     },
     quickAo: {
+      name:'quickao',
       doc: "Determines ambient occlusion by checking immediate neighboring voxels. Not suitable for deformed models. Overrules ao on the model.",
       format: "<#RGB|#RRGGBB> [<intensity>]",
-      values: undefined,
-      completion: "#400 0.5",
       basic, lambert, phong, standard, physical, toon, matcap, 
+      values: undefined,
+      defaultValue: undefined,
+      completion: "#400 0.5",
       dontWrite: undefined,
-      write: (v) => PropertyWriter.writeQuickAo(v),
-      parse: PropertyParser.parseQuickAo.bind(null, "quickao"),
+      write: function(value) { return PropertyWriter.writeQuickAo(value); },
+      parse: function(value) { return PropertyParser.parseQuickAoNew(this, value); }
     },    
     shell: {
+      name:'shell',
       doc: "Material shell or shells.",
       format: "[<colorId> <distance>]+",
-      values: undefined,
-      completion: "V 0.5 W 0.5",
       basic, lambert, phong, standard, physical, toon, matcap, normal,
+      values: undefined,
+      defaultValue: undefined,
+      completion: "V 0.5 W 0.5",
       dontWrite: undefined,
-      write: (v) => PropertyWriter.writeShell(v),
-      parse: PropertyParser.parseShell.bind(null, "shell"),
+      write: function(value) { return PropertyWriter.writeShell(value); },
+      parse: function(value) { return PropertyParser.parseShellNew(this, value); }
     },
     _deformation: {
-      doc: "Deformation properties"
+      title: "Deformation properties"
     },
     deform: {
+      name:'deform',
       doc: "Deforms the surface by repeated averaging of vertices.",
       format: "<int:count> <float:strength> <float:damping>",
-      values: undefined,
-      completion: "3 1",
       basic, lambert, phong, standard, physical, toon, matcap, normal,
+      values: undefined,
+      allowUniform: false,
+      defaultValue: undefined,
+      completion: "3 1",
       dontWrite: undefined,
-      write: (v) => PropertyWriter.writeDeform(v),
-      parse: PropertyParser.parseDeform.bind(null, "deform"),
+      write: function(value) { return PropertyWriter.writeDeform(value); },
+      parse: function(value) { return PropertyParser.parseDeformNew(this, value); }
     },
     warp: {
+      name:'warp',
       doc: "Warps the voxels with an amplitude (distance in voxels) and frequency (in voxels). For ",
       format: "<float:ampl> [<float:freq>] OR <amplX> <amplY> <amplZ> [<freq>]",
-      values: undefined,
-      completion: "1 0.2",
       basic, lambert, phong, standard, physical, toon, matcap, normal,
+      values: undefined,
+      defaultValue: undefined,
+      completion: "1 0.2",
       dontWrite: undefined,
-      write: (v) => PropertyWriter.writeWarp(v),
-      parse: PropertyParser.parseWarp.bind(null, "warp"),
+      write: function(value) { return PropertyWriter.writeWarp(value); },
+      parse: function(value) { return PropertyParser.parseWarpNew(this, value); }
     },
     scatter: {
+      name:'scatter',
       doc: "Scatters the vertices. Distance is in voxels",
       format: "<float>",
-      values: undefined,
-      completion: "0.35",
       basic, lambert, phong, standard, physical, toon, matcap, normal,
+      values: undefined,
+      defaultValue: 0,
+      completion: "0.35",
       dontWrite: "0",
       write: undefined,
-      parse: PropertyParser.parseFloat.bind(null, "scatter", 0),
+      parse: function(value) { return PropertyParser.parseFloatNew(this, value); }
     },
     _planar: {
-      doc: "Planar properties"
+      title: "Planar properties"
     },
     flatten: {
+      name:'flatten',
       doc: "Flattens as if a part is cut off. Note: uses material bounds, not model bounds.",
       format: "{ -x x +x -y y +y -z z +z | none }",
-      values: undefined,
-      completion: "-y",
       basic, lambert, phong, standard, physical, toon, matcap, normal,
+      values: undefined,
+      defaultValue: undefined,
+      completion: "-y",
       dontWrite: undefined,
-      write: (v) => `${Planar.toString(v)}`,
-      parse: PropertyParser.parsePlanarPlanes.bind(null, "flatten"),
+      write: function(value) { return `${Planar.toString(value)}`; },
+      parse: function(value) { return PropertyParser.parsePlanarPlanesNew(this, value); }
+      
     },
     clamp: {
+      name:'clamp',
       doc: "Flattens with peripendicular sides. Note: uses material bounds, not model bounds.",
       format: "{ -x x +x -y y +y -z z +z | none }",
-      values: undefined,
-      completion: "-y",
       basic, lambert, phong, standard, physical, toon, matcap, normal,
+      values: undefined,
+      defaultValue: undefined,
+      completion: "-y",
       dontWrite: undefined,
-      write: (v) => `${Planar.toString(v)}`,
-      parse: PropertyParser.parsePlanarPlanes.bind(null, "clamp"),
+      write: function(value) { return `${Planar.toString(value)}`; },
+      parse: function(value) { return PropertyParser.parsePlanarPlanesNew(this, value); }
     },
     skip: {
+      name:'skip',
       doc: "Faces are not created, do not influence other faces, do not have shells, etc. Note: uses material bounds, not model bounds.",
       format: "{ -x x +x -y y +y -z z +z | none }",
-      values: undefined,
-      completion: "-y",
       basic, lambert, phong, standard, physical, toon, matcap, normal,
+      values: undefined,
+      defaultValue: undefined,
+      completion: "-y",
       dontWrite: undefined,
-      write: (v) => `${Planar.toString(v)}`,
-      parse: PropertyParser.parsePlanarPlanes.bind(null, "skip"),
+      write: function(value) { return `${Planar.toString(value)}`; },
+      parse: function(value) { return PropertyParser.parsePlanarPlanesNew(this, value); }
     },
     hide: {
+      name:'hide',
       doc: "Faces are created, influence other faces, have shells, etc. but do not add ambient occlusion, and are not created in the mesh. Note: uses material bounds, not model bounds.",
       format: "{ -x x +x -y y +y -z z +z | none }",
-      values: undefined,
-      completion: "x y z",
       basic, lambert, phong, standard, physical, toon, matcap, normal,
+      values: undefined,
+      defaultValue: undefined,
+      completion: "x y z",
       dontWrite: undefined,
-      write: (v) => `${Planar.toString(v)}`,
-      parse: PropertyParser.parsePlanarPlanes.bind(null, "hide"),
+      write: function(value) { return `${Planar.toString(value)}`; },
+      parse: function(value) { return PropertyParser.parsePlanarPlanesNew(this, value); }
     },
     _shader: {
-      doc: "Shader properties"
+      title: "Shader properties"
     },
     simplify: {
+      name:'simplify',
       doc: "By default faces are combined to reduce the model memory size, which may be unwanted for shaders.",
       format: undefined,
-      values: ["true","false"],
-      completion: "false",
       basic, lambert, phong, standard, physical, toon, matcap, normal,
+      values: ["true","false"],
+      defaultValue: undefined,
+      completion: "false",
       dontWrite: undefined,
       write: undefined,
-      parse: PropertyParser.parseBoolean.bind(null, "simplify", undefined),
+      parse: function(value) { return PropertyParser.parseBooleanNew(this, value) }
     },
     data: {
+      name:'data',
       doc: "Vertex data for use in shaders. Names and values must match model data.",
       format: "[<attributename> <float1> ... <float4>]+ ",
-      values: undefined,
-      completion: "data 0.5 0.5",
       basic, lambert, phong, standard, physical, toon, matcap, normal,
+      values: undefined,
+      defaultValue: undefined,
+      completion: "data 0.5 0.5",
       dontWrite: undefined,
-      write: (v) => PropertyWriter.writeVertexData(v),
-      parse: PropertyParser.parseData.bind(null, "data"),
+      write: function(value) { return PropertyWriter.writeVertexData(value); },
+      parse: function(value) { return PropertyParser.parseDataNew(this, value); }
     },
     _colors: {
-      doc: "Color properties"
+      title: "Color properties"
     },
     fade: {
+      name:'fade',
       doc: "Whether colors in this material fade into each other",
       format: undefined,
-      values: ["true","false"],
-      completion: "true",
       basic, lambert, phong, standard, physical, toon, matcap, 
+      values: ["true","false"],
+      defaultValue: false,
+      completion: "true",
       dontWrite: "false",
       write: undefined,
-      parse: PropertyParser.parseBoolean.bind(null, "fade", false),
+      parse: function(value) { return PropertyParser.parseBooleanNew(this, value) }
     },
     colors: {
+      name:'colors',
       doc: "Colors for this material. Use fade=true to fade between them.\nMagica voxel palette index will be added when (re)loading .vox files in the playground.",
       format: "[<colorid>:<#RGB|#RRGGBB>]+|\n[<colorid>(<magicavoxindex>):<#RGB|#RRGGBB>]+",
-      values: undefined,
-      completion: "V:#F80",
       basic, lambert, phong, standard, physical, toon, matcap, normal,
+      values: undefined,
+      defaultValue: undefined,
+      completion: "V:#F80",
       dontWrite: undefined,
-      write: (v) => PropertyWriter.writeColors(v),
-      parse: PropertyParser.parseColors.bind(null, "colors"),
+      write: function(value) { return PropertyWriter.writeColors(value); },
+      parse: function(value) { return PropertyParser.parseColorsNew(this, value); }
     }
   };
   
@@ -4357,7 +5201,7 @@ class MaterialReader {
       if (!found) {
         throw {
             name: 'SyntaxError',
-            message: `(${modelName}) Unknown property '${property}' found in material.`
+            message: `(${modelName}) Unknown property '${property ? property : parameters[property]}' found in material.`
         };                  
       }
     } 
@@ -4452,13 +5296,11 @@ class MaterialReader {
 
 class MaterialWriter { 
   
-  static write(material) {
-    let definitions = SVOX.MATERIALDEFINITIONS;
-    
+  static write(material) {   
     let out = [];
-    for (const property in material.settings) {
-      let def = definitions[property];
-      if (def !== undefined && material.settings[property] !== undefined) {
+    for (const property in SVOX.MATERIALDEFINITIONS) {
+      let def = SVOX.MATERIALDEFINITIONS[property];
+      if (material.settings[property] !== undefined) {
         let value = def.write ? def.write(material.settings[property]) : `${material.settings[property]}`;
         if (value !== def.dontWrite) {
           out.push(`${property.toLowerCase()} = ${value}`)
@@ -4823,343 +5665,746 @@ class VoxelWriter {
     // The order determines the write order
 
     _main: {
-      doc: "Main properties"
+      title: "Main properties"
     },
     size: {
+      name: 'size',
       doc: "The size of the voxel matrix.",
       format: "<int:size> | <int:x> <int:y> <int:z>",
       values: undefined,
+      defaultValue: { x:undefined, y:undefined, z:undefined },
+      allowUniform: true,
       completion: "10 10 10",
       dontWrite: undefined,
-      write: (v) => PropertyWriter.writeIntXYZ(v, true),
-      parse: PropertyParser.parseXYZInt.bind(null, "size", true, undefined, undefined, undefined),
+      write: function(value) { return PropertyWriter.writeIntXYZ(value, true); },
+      parse: function(value) { return PropertyParser.parseXYZIntNew(this, value); }
     },
     scale: {
+      name: 'scale',
       doc: "The scale of the voxels in world units (1 = 1 meter).",
       format: "<float:scale> | <float:x> <float:y> <float:z>",
       values: undefined,
+      defaultValue: { x:1, y:1, z:1 },
+      allowUniform: true,
       completion: "1 1 1",
       dontWrite: "1 1 1",
-      write: (v) => PropertyWriter.writeFloatXYZ(v, true),
-      parse: PropertyParser.parseScale.bind(null, "scale", "1 1 1")
+      write: function(value) { return PropertyWriter.writeFloatXYZ(value, true); },
+      parse: function(value) { return PropertyParser.parseScaleNew(this, value); }
     },
     origin: {
-      doc: "The origin for the model.",
-      format: "{ -x x +x -y y +y -z z +z }",
+      name: 'origin',
+      doc: "The origin for the model. Default is x y z (the center of the model).",
+      format: "{ -x x +x -y y +y -z z +z | none}",
       values: undefined,
+      defaultValue: "x y z",
       completion: "-y",
       dontWrite: "x y z",
-      write: (v) => `${Planar.toString(v)}`,
-      parse: PropertyParser.parsePlanarPoint.bind(null, "origin", "x y z"),
-    },      
+      write: function(value) { return `${Planar.toString(value)}`; },
+      parse: function(value) { return PropertyParser.parsePlanarPointNew(this, value); }
+    },  
     resize: {
-      doc: "Compensates for size change due to deform, warp or scatter.",
+      name: 'resize',
+      doc: "Compensates for size change due to deform, warp, scatter, (smooth)translate, ...",
       format: undefined,
-      values: ["bounds","fit","fill"],
+      values: ["fill", "fit", "bounds", "fitbounds", "none"],
+      defaultValue: undefined,
       completion: "fit",
       dontWrite: undefined,
       write: undefined,
-      parse: PropertyParser.parseEnum.bind(null, "resize", ["bounds", "fit", "fill"], undefined),
-    },    
+      parse: function(value) { return PropertyParser.parseEnumNew(this, value); }
+    },  
     rotation: {
+      name: 'rotation',
       doc: "The rotation of the model over the three axes.",
       format: "<x> <y> <z>",
       values: undefined,
+      defaultValue: { x:0, y:0, z:0 },
+      allowUniform: false,
       completion: "0 45 0",
       dontWrite: "0 0 0",
-      write: (v) => PropertyWriter.writeFloatXYZ(v, false),
-      parse: PropertyParser.parseXYZFloat.bind(null, "rotation", false, 0, 0, 0),
+      write: function(value) { return PropertyWriter.writeFloatXYZ(value, false); },
+      parse: function(value) { return PropertyParser.parseXYZFloatNew(this, value); }
     },
     position: {
+      name: 'position',
       doc: "The position of the group (in world coordinates from the origin).",
       format: "<x> <y> <z>",
       values: undefined,
+      defaultValue: { x:0, y:0, z:0 },
+      allowUniform: false,
       completion: "0 1 0",
       dontWrite: "0 0 0",
-      write: (v) => PropertyWriter.writeFloatXYZ(v, false),
-      parse: PropertyParser.parseXYZFloat.bind(null, "position", false, 0, 0, 0),
+      write: function(value) { return PropertyWriter.writeFloatXYZ(value, false); },
+      parse: function(value) { return PropertyParser.parseXYZFloatNew(this, value); }
     },  
     wireframe: {
+      name: 'wireframe',
       doc: "Render the model as wireframe (excl. matcap materials).",
       format: undefined,
       values: ["true","false"],
+      defaultValue: undefined,
       completion: "true",
       dontWrite: undefined,
       write: undefined,
-      parse: PropertyParser.parseBoolean.bind(null, "wireframe", undefined),
+      parse: function(value) { return PropertyParser.parseBooleanNew(this, value); }
     },
-    _shape: {
-      doc: "Shape properties"
-    },
-    shape: {
-      doc: "Reshapes the model to fit in this shape.  Is not applied to groups. Values cylinder-x, cylinder-y and cylinder-z will be deprecated in in a future release!",
-      format: undefined,
-      values: ["box","sphere","cylinderx","cylindery","cylinderz"],
-      completion: "cylindery",
+    randomSeed: {
+      name: 'randomseed',
+      doc: "A randomseed to guarantee the same results, e.g. when animating.",
+      format: "<float>",
+      values: undefined,
+      defaultValue: undefined,
+      completion: "5408.5408",
       dontWrite: undefined,
       write: undefined,
-      parse: PropertyParser.parseEnum.bind(null, "shape", ["box","sphere","cylinderx","cylindery","cylinderz"], undefined),
-    },
-    scaleYX: {
-      doc: "Scale Y over X, i.e. scales the group in the Y direction depending on the X position.  Is not applied to groups. When textures are distored use simplify = false.",
-      format: "<scale0> <scale1> ... <scaleN>",
-      values: undefined,
-      completion: "1.5 0.5 1.5",
-      dontWrite: undefined,
-      write: (v) => v.join(' '),
-      parse: PropertyParser.parseFloatArray.bind(null, "scaleyx"),
-    },     
-    scaleZX: {
-      doc: "Scale Z over X, i.e. scales the group in the Z direction depending on the X position.  Is not applied to groups. When textures are distored use simplify = false.",
-      format: "<scale0> <scale1> ... <scaleN>",
-      values: undefined,
-      completion: "1.5 0.5 1.5",
-      dontWrite: undefined,
-      write: (v) => v.join(' '),
-      parse: PropertyParser.parseFloatArray.bind(null, "scalezx"),
-    },
-    scaleXY: {
-      doc: "Scale X over Y, i.e. scales the model in the X direction depending on the Y position.  Is not applied to groups. When textures are distored use simplify = false.",
-      format: "<scale0> <scale1> ... <scaleN>",
-      values: undefined,
-      completion: "1.5 0.5 1.5",
-      dontWrite: undefined,
-      write: (v) => v.join(' '),
-      parse: PropertyParser.parseFloatArray.bind(null, "scalexy"),
-    },    
-    scaleZY: {
-      doc: "Scale Z over Y, i.e. scales the group in the Z direction depending on the Y position.  Is not applied to groups. When textures are distored use simplify = false.",
-      format: "<scale0> <scale1> ... <scaleN>",
-      values: undefined,
-      completion: "1.5 0.5 1.5",
-      dontWrite: undefined,
-      write: (v) => v.join(' '),
-      parse: PropertyParser.parseFloatArray.bind(null, "scalezy"),
-    },       
-    scaleXZ: {
-      doc: "Scale X over Z, i.e. scales the group in the X direction depending on the Z position.  Is not applied to groups. When textures are distored use simplify = false.",
-      format: "<scale0> <scale1> ... <scaleN>",
-      values: undefined,
-      completion: "1.5 0.5 1.5",
-      dontWrite: undefined,
-      write: (v) => v.join(' '),
-      parse: PropertyParser.parseFloatArray.bind(null, "scalexz"),
-    },       
-    scaleYZ: {
-      doc: "Scale Y over Z, i.e. scales the group in the Y direction depending on the Z position.  Is not applied to groups. When textures are distored use simplify = false.",
-      format: "<scale0> <scale1> ... <scaleN>",
-      values: undefined,
-      completion: "1.5 0.5 1.5",
-      dontWrite: undefined,
-      write: (v) => v.join(' '),
-      parse: PropertyParser.parseFloatArray.bind(null, "scaleyz"),
-    }, 
-    rotateX: {
-      doc: "Rotate the group over the X axis, i.e. rotates the model depending on the X position. Is not applied to groups.",
-      format: "<degrees0> <degrees1> ... <degreesN>",
-      values: undefined,
-      completion: "0 90 0",
-      dontWrite: undefined,
-      write: (v) => v.join(' '),
-      parse: PropertyParser.parseFloatArray.bind(null, "rotatex"),
-    },     
-    rotateY: {
-      doc: "Rotate the group over the Y axis, i.e. rotates the model depending on the Y position. Is not applied to groups.",
-      format: "<degrees0> <degrees1> ... <degreesN>",
-      values: undefined,
-      completion: "0 90 0",
-      dontWrite: undefined,
-      write: (v) => v.join(' '),
-      parse: PropertyParser.parseFloatArray.bind(null, "rotatey"),
-    },     
-    rotateZ: {
-      doc: "Rotate the group over the Z axis, i.e. rotates the model depending on the Z position. Is not applied to groups.",
-      format: "<degrees0> <degrees1> ... <degreesN>",
-      values: undefined,
-      completion: "0 90 0",
-      dontWrite: undefined,
-      write: (v) => v.join(' '),
-      parse: PropertyParser.parseFloatArray.bind(null, "rotatez"),
-    },
-    translateYX: {
-      doc: "Translate Y over X, i.e. translates the model in the Y direction depending on the X position. Is not applied to groups.",
-      format: "<offset0> <offset1> ... <offsetN>",
-      values: undefined,
-      completion: "-1 1 -1",
-      dontWrite: undefined,
-      write: (v) => v.join(' '),
-      parse: PropertyParser.parseFloatArray.bind(null, "translateyx"),
-    },     
-    translateZX: {
-      doc: "Translate Z over X, i.e. translates the model in the Z direction depending on the X position. Is not applied to groups.",
-      format: "<offset0> <offset1> ... <offsetN>",
-      values: undefined,
-      completion: "-1 1 -1",
-      dontWrite: undefined,
-      write: (v) => v.join(' '),
-      parse: PropertyParser.parseFloatArray.bind(null, "translatezx"),
-    },     
-    translateXY: {
-      doc: "Translate X over Y, i.e. translates the model in the X direction depending on the Y position. Is not applied to groups.",
-      format: "<offset0> <offset1> ... <offsetN>",
-      values: undefined,
-      completion: "-1 1 -1",
-      dontWrite: undefined,
-      write: (v) => v.join(' '),
-      parse: PropertyParser.parseFloatArray.bind(null, "translatexy"),
-    },
-    translateZY: {
-      doc: "Translate Z over Y, i.e. translates the model in the Z direction depending on the Y position. Is not applied to groups.",
-      format: "<offset0> <offset1> ... <offsetN>",
-      values: undefined,
-      completion: "-1 1 -1",
-      dontWrite: undefined,
-      write: (v) => v.join(' '),
-      parse: PropertyParser.parseFloatArray.bind(null, "translatezy"),
-    },       
-    translateXZ: {
-      doc: "Translate X over Z, i.e. translates the model in the X direction depending on the Z position. Is not applied to groups.",
-      format: "<offset0> <offset1> ... <offsetN>",
-      values: undefined,
-      completion: "-1 1 -1",
-      dontWrite: undefined,
-      write: (v) => v.join(' '),
-      parse: PropertyParser.parseFloatArray.bind(null, "translatexz"),
-    },       
-    translateYZ: {
-      doc: "Translate Y over Z, i.e. translates the model in the Y direction depending on the Z position. Is not applied to groups.",
-      format: "<offset0> <offset1> ... <offsetN>",
-      values: undefined,
-      completion: "-1 1 -1",
-      dontWrite: undefined,
-      write: (v) => v.join(' '),
-      parse: PropertyParser.parseFloatArray.bind(null, "translateyz"),
-    },
+      parse: function(value) { return PropertyParser.parseFloatNew(this, value); }
+    },      
     _planar: {
-      doc: "Planar properties"
+      title: "Planar properties"
     },
     flatten: {
+      name: 'flatten',
       doc: "Flattens as if a part is cut off.",
       format: "{ -x x +x -y y +y -z z +z | none }",
       values: undefined,
+      defaultValue: undefined,
       completion: "-y",
       dontWrite: undefined,
-      write: (v) => `${Planar.toString(v)}`,
-      parse: PropertyParser.parsePlanarPlanes.bind(null, "flatten"),
+      write: function(value) { return `${Planar.toString(value)}`; },
+      parse: function(value) { return PropertyParser.parsePlanarPlanesNew(this, value); }
     },
     clamp: {
+      name: 'clamp',
       doc: "Flattens with peripendicular sides.",
       format: "{ -x x +x -y y +y -z z +z | none }",
       values: undefined,
+      defaultValue: undefined,
       completion: "-y",
       dontWrite: undefined,
-      write: (v) => `${Planar.toString(v)}`,
-      parse: PropertyParser.parsePlanarPlanes.bind(null, "clamp"),
+      write: function(value) { return `${Planar.toString(value)}`; },
+      parse: function(value) { return PropertyParser.parsePlanarPlanesNew(this, value); }
     },
     skip: {
+      name: 'skip',
       doc: "Faces are not created, do not influence other faces, do not have shells, etc.. Use skip unless hide is needed, as skip is faster.",
       format: "{ -x x +x -y y +y -z z +z | none }",
       values: undefined,
+      defaultValue: undefined,
       completion: "-y",
       dontWrite: undefined,
-      write: (v) => `${Planar.toString(v)}`,
-      parse: PropertyParser.parsePlanarPlanes.bind(null, "skip"),
+      write: function(value) { return `${Planar.toString(value)}`; },
+      parse: function(value) { return PropertyParser.parsePlanarPlanesNew(this, value); }
     },
     hide: {
+      name: 'hide',
       doc: "Faces are created, influence other faces, have shells, etc. but do not add ambient occlusion, and are not created in the mesh.",
       format: "{ -x x +x -y y +y -z z +z | none }",
       values: undefined,
+      defaultValue: undefined,
       completion: "x y z",
       dontWrite: undefined,
-      write: (v) => `${Planar.toString(v)}`,
-      parse: PropertyParser.parsePlanarPlanes.bind(null, "hide"),
+      write: function(value) { return `${Planar.toString(value)}`; },
+      parse: function(value) { return PropertyParser.parsePlanarPlanesNew(this, value); }
     },
     tile: {
+      name: 'tile',
       doc: "Don't warp or scatter these model edges to allow tiling",
-      format: "{ x y z|-x +x -y +y -z +z | none }",
+      format: "{ -x x +x -y y +y -z z +z | none }",
       values: undefined,
+      defaultValue: undefined,
       completion: "x z",
       dontWrite: undefined,
-      write: (v) => `${Planar.toString(v)}`,
-      parse: PropertyParser.parsePlanarSides.bind(null, "tile"),
+      write: function(value) { return `${Planar.toString(value)}`; },
+      parse: function(value) { return PropertyParser.parsePlanarSidesNew(this, value); }
     },  
     _effects: {
-      doc: "Effects properties"
+      title: "Effects properties"
     },
     ao: {
+      name: 'ao',
       doc: "Calculate ambient occlusion (not visible on normal materials). Max. distance in voxels.",
       format: "<#RGB|#RRGGBB> <maxdistance> [<intensity>] [<angle>]",
       values: undefined,
+      defaultValue: undefined,
       completion: "#400 5 0.5",
       dontWrite: undefined,
-      write: (v) => PropertyWriter.writeAo(v),
-      parse: PropertyParser.parseAo.bind(null, "ao"),
+      write: function(value) { return PropertyWriter.writeAo(value); },
+      parse: function(value) { return PropertyParser.parseAoNew(this, value); }
     },
     quickAo: {
+      name: 'quickao',
       doc: "Determines ambient occlusion by checking immediate neighboring voxels. Not suitable for deformed models.",
       format: "<#RGB|#RRGGBB> [<intensity>]",
       values: undefined,
+      defaultValue: undefined,
       completion: "#400 0.5",
       dontWrite: undefined,
-      write: (v) => PropertyWriter.writeQuickAo(v),
-      parse: PropertyParser.parseQuickAo.bind(null, "quickao"),
+      write: function(value) { return PropertyWriter.writeQuickAo(value); },
+      parse: function(value) { return PropertyParser.parseQuickAoNew(this, value); }
     },
     aoSides: {
+      name: 'aosides',
       doc: "The 'walls', 'floor' or 'ceiling' that occlude the model. Dependant on the bounds of the model (ignoring groups).",
-      format: "{ -x +x -y +y -z +z | none }",
+      format: "{ -x x +x -y y +y -z z +z | none }",
       values: undefined,
+      defaultValue: undefined,
       completion: "-y",
       dontWrite: undefined,
-      write: (v) => `${Planar.toString(v)}`,
-      parse: PropertyParser.parsePlanarSides.bind(null, "aosides"),
+      write: function(value) { return `${Planar.toString(value)}`; },
+      parse: function(value) { return PropertyParser.parsePlanarSidesNew(this, value); }
     },    
     aoSamples: {
+      name: 'aosamples',
       doc: "The number of samples (default 50) used to calculate ao. Higher looks better but genreates slower.",
       format: "<integer>",
       values: undefined,
+      defaultValue: undefined,
       completion: "200",
       dontWrite: "50",
       write: undefined,
-      parse: PropertyParser.parseFloat.bind(null, "aosamples", 50),
+      parse: function(value) { return PropertyParser.parseFloatNew(this, value); }
     },   
     shadowQuality: {
+      name: 'shadowquality',
       doc: "When using castshadow = true on a lights, low shadow quality is less accurate and more blocky, but faster. Default is high.",
       format: undefined,
       values: ["hight","low"],
+      defaultValue: undefined,
       completion: "low",
       dontWrite: undefined,
       write: undefined,
-      parse: PropertyParser.parseEnum.bind(null, "shadowquality", ["high", "low"], undefined),
+      parse: function(value) { return PropertyParser.parseEnumNew(this, value); }
     },    
     shell: {
+      name: 'shell',
       doc: "Material shell or shells.",
       format: "[<colorId> <distance>]+",
       values: undefined,
+      defaultValue: undefined,
       completion: "V 0.5 W 0.5",
       dontWrite: undefined,
-      write: (v) => PropertyWriter.writeShell(v),
-      parse: PropertyParser.parseShell.bind(null, "shell"),
+      write: function(value) { return PropertyWriter.writeShell(value); },
+      parse: function(value) { return PropertyParser.parseShellNew(this, value); }
     },
     _shader: {
-      doc: "Shader properties"
+      title: "Shader properties"
     },
     simplify: {
+      name: 'simplify',
       doc: "By default faces are combined to reduce the model memory size, which may be unwanted for shaders.",
       format: undefined,
       values: ["true","false"],
+      defaultValue: "true",
       completion: "false",
-      dontWrite: 'true',
+      dontWrite: "true",
       write: undefined,
-      parse: PropertyParser.parseBoolean.bind(null, "simplify", true),
+      parse: function(value) { return PropertyParser.parseBooleanNew(this, value); }
     },
     data: {
+      name: 'data',
       doc: "Vertex data for use in shaders. Names and values in materials must match this definition.",
       format: "[<attributename> <float> <float> ...]+ ",
       values: undefined,
+      defaultValue: undefined,
       completion: "data 0.5 0.5",
       dontWrite: undefined,
-      write: (v) => PropertyWriter.writeVertexData(v),
-      parse: PropertyParser.parseData.bind(null, "data"),
+      write: function(value) { return PropertyWriter.writeVertexData(value); },
+      parse: function(value) { return PropertyParser.parseDataNew(this, value); }
+    },
+    _shape: {
+      title: "Shape properties"
+    },
+    shape: {
+      name: 'shape',
+      doc: "Reshapes the group to fit in this shape. Is not applied to nested groups. Values cylinder-x, cylinder-y and cylinder-z will be deprecated in a future release!",
+      format: undefined,
+      values: ["box","sphere","cylinderx","cylindery","cylinderz"],
+      defaultValue: undefined,
+      completion: "cylindery",
+      dontWrite: undefined,
+      write: undefined,
+      parse: function(value) { return PropertyParser.parseEnumNew(this, value); }
+    },    
+    _scaleMeta: {
+      meta: "scale<axis><over>",
+      title: "Linear interpolated scale.",
+      doc: "Linear interpolated scale. E.g. scalexy = 1 1 0 scales x over y like a house. Is not applied to nested groups. When textures are distored use simplify = false.\nOptions: scaleyx, scalezx, scalexy, scalezy, scalexz, scaleyz",
+      format: "scale<axis><over> = <scale0> ... <scaleN>"
+    },     
+    scaleYX: {
+      name: 'scaleyx',
+      hide: true,
+      doc: "Linear interpolated scale Y over X, i.e. scales the group in the Y direction depending on the X position. Is not applied to nested groups. When textures are distored use simplify = false.",
+      format: "<scale0> ... <scaleN>",
+      values: undefined,
+      defaultValue: undefined,
+      completion: "1.5 0.5 1.5",
+      dontWrite: undefined,
+      write: function(value) { return value.join(' '); },
+      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+    },     
+    scaleZX: {
+      name: 'scalezx',
+      hide: true,
+      doc: "Linear interpolated scale Z over X, i.e. scales the group in the Z direction depending on the X position. Is not applied to nested groups. When textures are distored use simplify = false.",
+      format: "<scale0> ... <scaleN>",
+      values: undefined,
+      defaultValue: undefined,
+      completion: "1.5 0.5 1.5",
+      dontWrite: undefined,
+      write: function(value) { return value.join(' '); },
+      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+    },
+    scaleXY: {
+      name: 'scalexy',
+      hide: true,
+      doc: "Linear interpolated scale X over Y, i.e. scales the model in the X direction depending on the Y position. Is not applied to nested groups. When textures are distored use simplify = false.",
+      format: "<scale0> ... <scaleN>",
+      values: undefined,
+      defaultValue: undefined,
+      completion: "1.5 0.5 1.5",
+      dontWrite: undefined,
+      write: function(value) { return value.join(' '); },
+      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+    },    
+    scaleZY: {
+      name: 'scalezy',
+      hide: true,
+      doc: "Linear interpolated scale Z over Y, i.e. scales the group in the Z direction depending on the Y position. Is not applied to nested groups. When textures are distored use simplify = false.",
+      format: "<scale0> ... <scaleN>",
+      values: undefined,
+      defaultValue: undefined,
+      completion: "1.5 0.5 1.5",
+      dontWrite: undefined,
+      write: function(value) { return value.join(' '); },
+      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+    },       
+    scaleXZ: {
+      name: 'scalexz',
+      hide: true,
+      doc: "Linear interpolated scale X over Z, i.e. scales the group in the X direction depending on the Z position. Is not applied to nested groups. When textures are distored use simplify = false.",
+      format: "<scale0> ... <scaleN>",
+      values: undefined,
+      defaultValue: undefined,
+      completion: "1.5 0.5 1.5",
+      dontWrite: undefined,
+      write: function(value) { return value.join(' '); },
+      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+    },       
+    scaleYZ: {
+      name: 'scaleyz',
+      hide: true,
+      doc: "Linear interpolated scale Y over Z, i.e. scales the group in the Y direction depending on the Z position. Is not applied to nested groups. When textures are distored use simplify = false.",
+      format: "<scale0> ... <scaleN>",
+      values: undefined,
+      defaultValue: undefined,
+      completion: "1.5 0.5 1.5",
+      dontWrite: undefined,
+      write: function(value) { return value.join(' '); },
+      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+    },     
+    _smoothScaleMeta: {
+      meta: "smoothscale<axis><over>",
+      title: "Smooth interpolated scale.",
+      doc: "Smooth interpolated scale. E.g. scalexy = 1 1 0 scales x over y like a house. Is not applied to nested groups. When textures are distored use simplify = false.\nOptions: smoothscaleyx, smoothscalezx, smoothscalexy, smoothscalezy, smoothscalexz, smoothscaleyz",
+      format: "smoothscale<axis><over> = <scale0> ... <scaleN>"
+    },     
+    smoothScaleYX: {
+      name: 'smoothscaleyx',
+      hide: true,
+      doc: "Smooth interpolated scale Y over X, i.e. scales the group in the Y direction depending on the X position. Is not applied to nested groups. When textures are distored use simplify = false.",
+      format: "<scale0> ... <scaleN>",
+      values: undefined,
+      defaultValue: undefined,
+      completion: "1.5 0.5 1.5",
+      dontWrite: undefined,
+      write: function(value) { return value.join(' '); },
+      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+    },     
+    smoothScaleZX: {
+      name: 'smoothscalezx',
+      hide: true,
+      doc: "Smooth interpolated scale Z over X, i.e. scales the group in the Z direction depending on the X position. Is not applied to nested groups. When textures are distored use simplify = false.",
+      format: "<scale0> ... <scaleN>",
+      values: undefined,
+      defaultValue: undefined,
+      completion: "1.5 0.5 1.5",
+      dontWrite: undefined,
+      write: function(value) { return value.join(' '); },
+      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+    },
+    smoothScaleXY: {
+      name: 'smoothscalexy',
+      hide: true,
+      doc: "Smooth interpolated scale X over Y, i.e. scales the model in the X direction depending on the Y position. Is not applied to nested groups. When textures are distored use simplify = false.",
+      format: "<scale0> ... <scaleN>",
+      values: undefined,
+      defaultValue: undefined,
+      completion: "1.5 0.5 1.5",
+      dontWrite: undefined,
+      write: function(value) { return value.join(' '); },
+      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+    },    
+    smoothScaleZY: {
+      name: 'smoothscalezy',
+      hide: true,
+      doc: "Smooth interpolated scale Z over Y, i.e. scales the group in the Z direction depending on the Y position. Is not applied to nested groups. When textures are distored use simplify = false.",
+      format: "<scale0> ... <scaleN>",
+      values: undefined,
+      defaultValue: undefined,
+      completion: "1.5 0.5 1.5",
+      dontWrite: undefined,
+      write: function(value) { return value.join(' '); },
+      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+    },       
+    smoothScaleXZ: {
+      name: 'smoothscalexz',
+      hide: true,
+      doc: "Smooth interpolated scale X over Z, i.e. scales the group in the X direction depending on the Z position. Is not applied to nested groups. When textures are distored use simplify = false.",
+      format: "<scale0> ... <scaleN>",
+      values: undefined,
+      defaultValue: undefined,
+      completion: "1.5 0.5 1.5",
+      dontWrite: undefined,
+      write: function(value) { return value.join(' '); },
+      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+    },       
+    smoothScaleYZ: {
+      name: 'smoothscaleyz',
+      hide: true,
+      doc: "Smooth interpolated scale Y over Z, i.e. scales the group in the Y direction depending on the Z position. Is not applied to nested groups. When textures are distored use simplify = false.",
+      format: "<scale0> ... <scaleN>",
+      values: undefined,
+      defaultValue: undefined,
+      completion: "1.5 0.5 1.5",
+      dontWrite: undefined,
+      write: function(value) { return value.join(' '); },
+      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+    },     
+    _rotateMeta: {
+      name: 'id',
+      meta: "rotate<over>",
+      title: "Linear interpolated rotate.",
+      doc: "Linear interpolated rotate. E.g. rotatey = 0 90 180 twists around in the y direction. Is not applied to nested groups. Without deform usually combined with lighting = sides.\nOptions: rotatex, rotatey, rotatez",
+      format: "rotate<over> = <degrees0> ... <degreesN>"
+    },                 
+    rotateX: {
+      name: 'rotatex',
+      hide: true,
+      doc: "Linear interpolated rotate the group over the X axis, i.e. rotates the group depending on the X position. Is not applied to nested groups.",
+      format: "<degrees0> ... <degreesN>",
+      values: undefined,
+      defaultValue: undefined,
+      completion: "0 90 0",
+      dontWrite: undefined,
+      write: function(value) { return value.join(' '); },
+      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+    },     
+    rotateY: {
+      name: 'rotatey',
+      hide: true,
+      doc: "Linear interpolated rotate the group over the Y axis, i.e. rotates the group depending on the Y position. Is not applied to nested groups.",
+      format: "<degrees0> ... <degreesN>",
+      values: undefined,
+      defaultValue: undefined,
+      completion: "0 90 0",
+      dontWrite: undefined,
+      write: function(value) { return value.join(' '); },
+      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+    },     
+    rotateZ: {
+      name: 'rotatez',
+      hide: true,
+      doc: "Linear interpolated rotate the group over the Z axis, i.e. rotates the group depending on the Z position. Is not applied to nested groups.",
+      format: "<degrees0> ... <degreesN>",
+      values: undefined,
+      defaultValue: undefined,
+      completion: "0 90 0",
+      dontWrite: undefined,
+      write: function(value) { return value.join(' '); },
+      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+    },     
+    _smoothRotateMeta: {
+      meta: "smoothrotate<axis><over>",
+      title: "Smooth interpolated rotate.",
+      doc: "Smooth interpolated rotate. E.g. rotatey = 0 90 180 twists around in the y direction. Is not applied to nested groups. Without deform usually combined with lighting = sides.\nOptions: smoothrotatex, smoothrotatey, smoothrotatez",
+      format: "smoothrotate<axis><over> = <degrees0> ... <degreesN>"
+    },                 
+    smoothRotateX: {
+      name: 'smoothrotatex',
+      hide: true,
+      doc: "Smooth interpolated rotate the group over the X axis, i.e. rotates the group depending on the X position. Is not applied to nested groups.",
+      format: "<degrees0> ... <degreesN>",
+      values: undefined,
+      defaultValue: undefined,
+      completion: "0 90 0",
+      dontWrite: undefined,
+      write: function(value) { return value.join(' '); },
+      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+    },     
+    smoothRotateY: {
+      name: 'smoothrotatey',
+      hide: true,
+      doc: "Smooth interpolated rotate the group over the Y axis, i.e. rotates the group depending on the Y position. Is not applied to nested groups.",
+      format: "<degrees0> ... <degreesN>",
+      values: undefined,
+      defaultValue: undefined,
+      completion: "0 90 0",
+      dontWrite: undefined,
+      write: function(value) { return value.join(' '); },
+      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+    },     
+    smoothRotateZ: {
+      name: 'smoothrotatez',
+      hide: true,
+      doc: "Smooth interpolated rotate the group over the Z axis, i.e. rotates the group depending on the Z position. Is not applied to nested groups.",
+      format: "<degrees0> ... <degreesN>",
+      values: undefined,
+      defaultValue: undefined,
+      completion: "0 90 0",
+      dontWrite: undefined,
+      write: function(value) { return value.join(' '); },
+      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+    },     
+    _translateMeta: {
+      meta: "translate<axis><over>",
+      title: "Linear interpolated translate",
+      doc: "Linear interpolated translate in voxels. E.g. translateyx = 10 0 10 translates in a V shape. Is not applied to nested groups.\nOptions: translateyx, translatezx, translatexy, translatezy, translatexz, translateyz",
+      format: "translate<axis><over> = <offset0> ... <offsetN>"
+    },  
+    translateYX: {
+      name: 'translateyx',
+      hide: true,
+      doc: "Linear interpolated translate Y over X, i.e. translates the group in the Y direction depending on the X position. Is not applied to nested groups.",
+      format: "<offset0> <offset1> ... <offsetN>",
+      values: undefined,
+      defaultValue: undefined,
+      completion: "-1 1 -1",
+      dontWrite: undefined,
+      write: function(value) { return value.join(' '); },
+      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+    },     
+    translateZX: {
+      name: 'translatezx',
+      hide: true,
+      doc: "Linear interpolated translate Z over X, i.e. translates the group in the Z direction depending on the X position. Is not applied to nested groups.",
+      format: "<offset0> <offset1> ... <offsetN>",
+      values: undefined,
+      defaultValue: undefined,
+      completion: "-1 1 -1",
+      dontWrite: undefined,
+      write: function(value) { return value.join(' '); },
+      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+    },     
+    translateXY: {
+      name: 'translatexy',
+      hide: true,
+      doc: "Linear interpolated translate X over Y, i.e. translates the group in the X direction depending on the Y position. Is not applied to nested groups.",
+      format: "<offset0> <offset1> ... <offsetN>",
+      values: undefined,
+      defaultValue: undefined,
+      completion: "-1 1 -1",
+      dontWrite: undefined,
+      write: function(value) { return value.join(' '); },
+      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+    },
+    translateZY: {
+      name: 'translatezy',
+      hide: true,
+      doc: "Linear interpolated translate Z over Y, i.e. translates the group in the Z direction depending on the Y position. Is not applied to nested groups.",
+      format: "<offset0> <offset1> ... <offsetN>",
+      values: undefined,
+      defaultValue: undefined,
+      completion: "-1 1 -1",
+      dontWrite: undefined,
+      write: function(value) { return value.join(' '); },
+      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+    },       
+    translateXZ: {
+      name: 'translatexz',
+      hide: true,
+      doc: "Linear interpolated translate X over Z, i.e. translates the group in the X direction depending on the Z position. Is not applied to nested groups.",
+      format: "<offset0> <offset1> ... <offsetN>",
+      values: undefined,
+      defaultValue: undefined,
+      completion: "-1 1 -1",
+      dontWrite: undefined,
+      write: function(value) { return value.join(' '); },
+      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+    },       
+    translateYZ: {
+      name: 'translateyz',
+      hide: true,
+      doc: "Linear interpolated translate Y over Z, i.e. translates the group in the Y direction depending on the Z position. Is not applied to nested groups.",
+      format: "<offset0> <offset1> ... <offsetN>",
+      values: undefined,
+      defaultValue: undefined,
+      completion: "-1 1 -1",
+      dontWrite: undefined,
+      write: function(value) { return value.join(' '); },
+      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+    },
+    _smoothTranslateMeta: {
+      meta: "smoothtranslate<axis><over>",
+      title: "Smooth interpolated translate",
+      doc: "Smooth interpolated translate in voxels. E.g. translateyx = 10 0 10 translates in a V shape. Is not applied to nested groups.\nOptions: smoothtranslateyx, smoothtranslatezx, smoothtranslatexy, smoothtranslatezy, smoothtranslatexz, smoothtranslateyz",
+      format: "smoothtranslate<axis><over> = <offset0> ... <offsetN>"
+    },  
+    smoothTranslateYX: {
+      name: 'smoothtranslateyx',
+      hide: true,
+      doc: "Smooth interpolated translate Y over X, i.e. translates the group in the Y direction depending on the X position. Is not applied to nested groups.",
+      format: "<offset0> <offset1> ... <offsetN>",
+      values: undefined,
+      defaultValue: undefined,
+      completion: "-1 1 -1",
+      dontWrite: undefined,
+      write: function(value) { return value.join(' '); },
+      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+    },     
+    smoothTranslateZX: {
+      name: 'smoothtranslatezx',
+      hide: true,
+      doc: "Smooth interpolated translate Z over X, i.e. translates the group in the Z direction depending on the X position. Is not applied to nested groups.",
+      format: "<offset0> <offset1> ... <offsetN>",
+      values: undefined,
+      defaultValue: undefined,
+      completion: "-1 1 -1",
+      dontWrite: undefined,
+      write: function(value) { return value.join(' '); },
+      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+    },     
+    smoothTranslateXY: {
+      name: 'smoothtranslatexy',
+      hide: true,
+      doc: "Smooth interpolated translate X over Y, i.e. translates the group in the X direction depending on the Y position. Is not applied to nested groups.",
+      format: "<offset0> <offset1> ... <offsetN>",
+      values: undefined,
+      defaultValue: undefined,
+      completion: "-1 1 -1",
+      dontWrite: undefined,
+      write: function(value) { return value.join(' '); },
+      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+    },
+    smoothTranslateZY: {
+      name: 'smoothtranslatezy',
+      hide: true,
+      doc: "Smooth interpolated translate Z over Y, i.e. translates the group in the Z direction depending on the Y position. Is not applied to nested groups.",
+      format: "<offset0> <offset1> ... <offsetN>",
+      values: undefined,
+      defaultValue: undefined,
+      completion: "-1 1 -1",
+      dontWrite: undefined,
+      write: function(value) { return value.join(' '); },
+      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+    },       
+    smoothTranslateXZ: {
+      name: 'smoothtranslatexz',
+      hide: true,
+      doc: "Smooth interpolated translate X over Z, i.e. translates the group in the X direction depending on the Z position. Is not applied to nested groups.",
+      format: "<offset0> <offset1> ... <offsetN>",
+      values: undefined,
+      defaultValue: undefined,
+      completion: "-1 1 -1",
+      dontWrite: undefined,
+      write: function(value) { return value.join(' '); },
+      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+    },       
+    smoothTranslateYZ: {
+      name: 'smoothtranslateyz',
+      hide: true,
+      doc: "Smooth interpolated translate Y over Z, i.e. translates the group in the Y direction depending on the Z position. Is not applied to nested groups.",
+      format: "<offset0> <offset1> ... <offsetN>",
+      values: undefined,
+      defaultValue: undefined,
+      completion: "-1 1 -1",
+      dontWrite: undefined,
+      write: function(value) { return value.join(' '); },
+      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+    },
+    _bendMeta: {
+      meta: "bend<axis><over>",
+      title: "Bend the group",
+      doc: "Bends the group. E.g. bendxy = 90 10 bends x over y upwards 90 degreed to the right around a point 10 voxels to the right. Use negative values for bend to the left and/or from the top. Is not applied to nested groups.\nOptions: bendyx, bendzx, bendxy, bendzy, bendxz, bendyz",
+      format: "bend<axis><over> = <degrees> <center>"
+    },     
+    bendYX: {
+      name: 'bendyx',
+      hide: true,
+      doc: "Bends Y over X, i.e. bends the group in the Y direction depending on the X position. Is not applied to nested groups.",
+      format: "<degrees> <center>",
+      values: undefined,
+      allowUniform: false,
+      defaultValue: { x:undefined, y:undefined },
+      completion: "90 10",
+      dontWrite: undefined,
+      write: function(value) { return `${value.x} ${value.y}`; },
+      parse: function(value) { return PropertyParser.parseXYFloatNew(this, value); }
+    },     
+    bendZX: {
+      name: 'bendzx',
+      hide: true,
+      doc: "Bends Z over X, i.e. bends the group in the Z direction depending on the X position. Is not applied to nested groups.",
+      format: "<degrees> <center>",
+      values: undefined,
+      allowUniform: false,
+      defaultValue: { x:undefined, y:undefined },
+      completion: "90 10",
+      dontWrite: undefined,
+      write: function(value) { return `${value.x} ${value.y}`; },
+      parse: function(value) { return PropertyParser.parseXYFloatNew(this, value); }
+    },
+    bendXY: {
+      name: 'bendxy',
+      hide: true,
+      doc: "Bends X over Y, i.e. bends the group in the X direction depending on the Y position. Is not applied to nested groups.",
+      format: "<degrees> <center>",
+      values: undefined,
+      allowUniform: false,
+      defaultValue: { x:undefined, y:undefined },
+      completion: "90 10",
+      dontWrite: undefined,
+      write: function(value) { return `${value.x} ${value.y}`; },
+      parse: function(value) { return PropertyParser.parseXYFloatNew(this, value); }
+    },    
+    bendZY: {
+      name: 'bendzy',
+      hide: true,
+      doc: "Bends Z over Y, i.e. bends the group in the Z direction depending on the Y position. Is not applied to nested groups.",
+      format: "<degrees> <center>",
+      values: undefined,
+      allowUniform: false,
+      defaultValue: { x:undefined, y:undefined },
+      completion: "90 10",
+      dontWrite: undefined,
+      write: function(value) { return `${value.x} ${value.y}`; },
+      parse: function(value) { return PropertyParser.parseXYFloatNew(this, value); }
+    },       
+    bendXZ: {
+      name: 'bendxz',
+      hide: true,
+      doc: "Bends X over Z, i.e. bends the group in the X direction depending on the Z position. Is not applied to nested groups.",
+      format: "<degrees> <center>",
+      values: undefined,
+      allowUniform: false,
+      defaultValue: { x:undefined, y:undefined },
+      completion: "90 10",
+      dontWrite: undefined,
+      write: function(value) { return `${value.x} ${value.y}`; },
+      parse: function(value) { return PropertyParser.parseXYFloatNew(this, value); }
+    },       
+    bendYZ: {
+      name: 'bendyz',
+      hide: true,
+      doc: "Bends Y over Z, i.e. bends the group in the Y direction depending on the Z position. Is not applied to nested groups.",
+      format: "<degrees> <center>",
+      values: undefined,
+      allowUniform: false,
+      defaultValue: { x:undefined, y:undefined },
+      completion: "90 10",
+      dontWrite: undefined,
+      write: function(value) { return `${value.x} ${value.y}`; },
+      parse: function(value) { return PropertyParser.parseXYFloatNew(this, value); }
     }
   };
   
@@ -5200,7 +6445,21 @@ class ModelReader {
    */
   static readFromString(modelString, modelName) {
     let definitions = SVOX.MODELDEFINITIONS;
-
+    
+    if (modelString.includes('WARNING')) {
+      SVOX.logWarning({
+        name: 'DebugWarning',
+        message: `(${modelName}) Debug 'WARNING' found.`,
+      });
+      modelString = modelString.replace('WARNING', ' ');
+    }
+    if (modelString.includes('ERROR')) {
+      throw { 
+        name:'DebugError', 
+        message:`(${modelName}) Debug 'ERROR' found`
+      };      
+    }    
+    
     let lines = this._convertToSinglePropertyLines(modelString);
     let parameters = this._parse(lines, modelName);
     
@@ -5232,9 +6491,6 @@ class ModelReader {
     this._validateSettings(settings, modelName);
     
     let model = new Model(settings);
-    
-    // Add the model itself as group '*'
-    this._createModelGroup(model);  
     
     parameters.textures.forEach(function (textureData) {
       model.textures.createTexture(textureData, modelName);
@@ -5489,7 +6745,7 @@ class ModelReader {
             name: 'SyntaxError',
             message: `(${modelName}) ` +
                      (property === '' ? `Syntax error before value '${parameters[property]}', are you missing a comma?`
-                                      : `Unknown property '${property}' found in model.`)
+                                      : `Unknown property '${property ? property : parameters[property]}' found in model.`)
         };    
       }
     }
@@ -5572,37 +6828,38 @@ class ModelReader {
           name: 'SyntaxError',
           message: `(${modelName}) The properties 'ao' and 'quickao' can not be used together in the model settings. Use materials to override the model settings.`
       };    
-    }     
-  }
-
-  /**
-  / Add the model itself as group '*'
-  / @param {object} model The model itself
-  */
-  static _createModelGroup(model) {
-    model.groups.createGroup( { id:'*', 
-                                scale: model.scale, 
-                                shape: model.shape,
-                                scaleYX: model.scaleYX,                           
-                                scaleZX: model.scaleZX,                           
-                                scaleXY: model.scaleXY,                           
-                                scaleZY: model.scaleZY,                           
-                                scaleXZ: model.scaleXZ,                           
-                                scaleYZ: model.scaleYZ,     
-                                rotateX: model.rotateX,
-                                rotateY: model.rotateY,
-                                rotateZ: model.rotateZ,
-                                translateYX: model.translateYX,                           
-                                translateZX: model.translateZX,                           
-                                translateXY: model.translateXY,                           
-                                translateZY: model.translateZY,                           
-                                translateXZ: model.translateXZ,                           
-                                translateYZ: model.translateYZ,
-                                origin: model.origin, 
-                                resize: model.resize, 
-                                rotation: model.rotation, 
-                                position: model.position
-                              } );       
+    }
+    
+    if ((settings.scaleYX && settings.smoothScaleYX) ||
+        (settings.scaleZX && settings.smoothScaleZX) ||
+        (settings.scaleXY && settings.smoothScaleXY) ||
+        (settings.scaleZY && settings.smoothScaleZY) ||
+        (settings.scaleXZ && settings.smoothScaleXZ) ||
+        (settings.scaleYZ && settings.smoothScaleYZ))   {
+      throw {
+        name: 'ModelError',
+        message: `(${modelName}) The model cannot combine linear and smooth scale.. in the same direction.`,
+      };
+    }    
+    if ((settings.rotateX && settings.smoothRotateX) ||
+        (settings.rotateY && settings.smoothRotateY) ||
+        (settings.rotateZ && settings.smoothRotateZ))   {
+      throw {
+        name: 'ModelError',
+        message: `(${modelName}) The model cannot combine linear and smooth rotate.. in the same direction.`,
+      };
+    }    
+    if ((settings.translateYX && settings.smoothTranslateYX) ||
+        (settings.translateZX && settings.smoothTranslateZX) ||
+        (settings.translateXY && settings.smoothTranslateXY) ||
+        (settings.translateZY && settings.smoothTranslateZY) ||
+        (settings.translateXZ && settings.smoothTranslateXZ) ||
+        (settings.translateYZ && settings.smoothTranslateYZ))   {
+      throw {
+        name: 'ModelError',
+        message: `(${modelName}) The model cannot combine linear and smooth translate.. in the same direction.`,
+      };
+    }      
   }
 
   /**
@@ -5683,36 +6940,50 @@ class ModelWriter {
     let multiplyFloat = function(value, i, values) { values[i] = value * repeat; };
     
     if (repeat > 1) { 
-      if (model.warp) {
-        model.warp.frequency /= repeat;
-        model.warp.amplitude  *= repeat;
-        model.warp.amplitudeX *= repeat;
-        model.warp.amplitudeY *= repeat;
-        model.warp.amplitudeZ *= repeat;
-      }
       if (model.ao) {
         model.ao.maxDistance *= repeat; 
       }  
+      // Scale the bend radius
+      if (model.bendYX) model.bendYX.y *= repeat;
+      if (model.bendZX) model.bendZX.y *= repeat;
+      if (model.bendXY) model.bendXY.y *= repeat;
+      if (model.bendZY) model.bendZY.y *= repeat;
+      if (model.bendXZ) model.bendXZ.y *= repeat;
+      if (model.bendYZ) model.bendYZ.y *= repeat;      
       
       // The model.translate.. arrays are multiplied via the '*' group
       
       model.groups.forEach((group) => {
+        
+        // Scale the position translation
         if (group.position) {
           group.position.x *= repeat;
           group.position.y *= repeat;
           group.position.z *= repeat;
         }
+        
+        // Scale the translation
         if (group.translation) {
           group.translation.x *= repeat;
           group.translation.y *= repeat;
           group.translation.z *= repeat;
         }
+        
+        // Scale the translate
         if (group.translateYX) group.translateYX.forEach(multiplyFloat);
         if (group.translateZX) group.translateZX.forEach(multiplyFloat);
         if (group.translateXY) group.translateXY.forEach(multiplyFloat);
         if (group.translateZY) group.translateZY.forEach(multiplyFloat);
         if (group.translateXZ) group.translateXZ.forEach(multiplyFloat);
         if (group.translateYZ) group.translateYZ.forEach(multiplyFloat);
+
+        // Scale the bend radius
+        if (group.bendYX) group.bendYX.y *= repeat;
+        if (group.bendZX) group.bendZX.y *= repeat;
+        if (group.bendXY) group.bendXY.y *= repeat;
+        if (group.bendZY) group.bendZY.y *= repeat;
+        if (group.bendXZ) group.bendXZ.y *= repeat;
+        if (group.bendYZ) group.bendYZ.y *= repeat;
       });
 
       model.lights.forEach((light) => {
@@ -5784,12 +7055,10 @@ class ModelWriter {
       result += newLine;
     }
     
-    let definitions = SVOX.MODELDEFINITIONS;
-    
     let out = [];
-    for (const property in model.settings) {
-      let def = definitions[property];
-      if (def !== undefined && model.settings[property] !== undefined) {
+    for (const property in SVOX.MODELDEFINITIONS) {
+      let def = SVOX.MODELDEFINITIONS[property];
+      if (model.settings[property] !== undefined) {
         let value = def.write ? def.write(model.settings[property]) : `${model.settings[property]}`;
         if (value !== def.dontWrite) {
           out.push(`${property.toLowerCase()} = ${value}`)
@@ -6248,6 +7517,117 @@ class Matrix {
 }
 
 // =====================================================
+// ../smoothvoxels/meshgenerator/xorshiftrandom.js
+// =====================================================
+
+class XorShiftRandom {
+  
+  /**
+   * Create a pseudorandom number generator, with a seed.
+   * @param {array} seed "128-bit" integer, composed of 4x32-bit
+   * integers in big endian order.
+   */
+  constructor(seed) {
+    seed = seed === 0 ? seed = 5408.5408 : seed;
+    seed = seed ?? Math.random()*Math.pow(2, 32) + Math.random();
+    seed = this.floatToSeed(seed);
+
+    // uint64_t s = [seed ...]
+    this._state0U = seed[0] | 0;
+    this._state0L = seed[1] | 0;
+    this._state1U = seed[2] | 0;
+    this._state1L = seed[3] | 0;
+  }
+  
+  /**
+   * Converts a float random seed to the required 4 32 bit ints
+   * @return {array}
+   */
+  floatToSeed(seed) {
+      let int1 = Math.trunc(seed) & (Math.pow(2, 32)-1);
+      let int2 = 0;
+      let int3 = ((seed %1 ) * Math.pow(2, 32)) & (Math.pow(2, 32)-1);
+      let int4 = 0;
+      return [int1, int2, int3, int4];
+  }  
+
+  /**
+   * Returns a 64bit random number as a 2x32bit array
+   * @return {array}
+   */
+  randomint() {
+    // uint64_t s1 = s[0]
+    var s1U = this._state0U, s1L = this._state0L;
+    // uint64_t s0 = s[1]
+    var s0U = this._state1U, s0L = this._state1L;
+
+    // result = s0 + s1
+    var sumL = (s0L >>> 0) + (s1L >>> 0);
+    var resU = (s0U + s1U + (sumL / 2 >>> 31)) >>> 0;
+    var resL = sumL >>> 0;
+
+    // s[0] = s0
+    this._state0U = s0U;
+    this._state0L = s0L;
+
+    // - t1 = [0, 0]
+    var t1U = 0, t1L = 0;
+    // - t2 = [0, 0]
+    var t2U = 0, t2L = 0;
+
+    // s1 ^= s1 << 23;
+    // :: t1 = s1 << 23
+    var a1 = 23;
+    var m1 = 0xFFFFFFFF << (32 - a1);
+    t1U = (s1U << a1) | ((s1L & m1) >>> (32 - a1));
+    t1L = s1L << a1;
+    // :: s1 = s1 ^ t1
+    s1U = s1U ^ t1U;
+    s1L = s1L ^ t1L;
+
+    // t1 = ( s1 ^ s0 ^ ( s1 >> 17 ) ^ ( s0 >> 26 ) )
+    // :: t1 = s1 ^ s0
+    t1U = s1U ^ s0U;
+    t1L = s1L ^ s0L;
+    // :: t2 = s1 >> 18
+    var a2 = 18;
+    var m2 = 0xFFFFFFFF >>> (32 - a2);
+    t2U = s1U >>> a2;
+    t2L = (s1L >>> a2) | ((s1U & m2) << (32 - a2));
+    // :: t1 = t1 ^ t2
+    t1U = t1U ^ t2U;
+    t1L = t1L ^ t2L;
+    // :: t2 = s0 >> 5
+    var a3 = 5;
+    var m3 = 0xFFFFFFFF >>> (32 - a3);
+    t2U = s0U >>> a3;
+    t2L = (s0L >>> a3) | ((s0U & m3) << (32 - a3));
+    // :: t1 = t1 ^ t2
+    t1U = t1U ^ t2U;
+    t1L = t1L ^ t2L;
+
+    // s[1] = t1
+    this._state1U = t1U;
+    this._state1L = t1L;
+
+    // return result
+    return [resU, resL];
+  };
+
+  /**
+   * Returns a random number normalized [0, 1), just like Math.random()
+   * @return {number}
+   */
+  random() {
+    var t2 = this.randomint();
+    // Math.pow(2, -32) = 2.3283064365386963e-10
+    // Math.pow(2, -52) = 2.220446049250313e-16
+    return t2[0] * 2.3283064365386963e-10 + (t2[1] >>> 12) * 2.220446049250313e-16;
+  };
+
+}
+
+// =====================================================
 // ../smoothvoxels/meshgenerator/noise.js
 // =====================================================
 
@@ -6256,71 +7636,73 @@ class Matrix {
 // This is the Improved Noise from the examples of Three.js.
 // It was adapted to change the permutation array from hard coded to generated.
 
-SVOX.Noise = function () {
+class Noise {
+  
+  constructor(random) {  
+    random = random ?? Math.random;
 
-	let p = [];
-  for ( let i = 0; i < 256; i ++ ) {
-    p[i] = Math.floor(Math.random()*256);
-		p[i + 256] = p[i];
-	}
+    this.p = [];
+    for ( let i = 0; i < 256; i ++ ) {
+      this.p[i] = Math.floor(random()*256);
+      this.p[i + 256] = this.p[i];
+    }
+  }
 
-	function fade( t ) {
+	fade( t ) {
 		return t * t * t * ( t * ( t * 6 - 15 ) + 10 );
 	}
 
-	function lerp( t, a, b ) {
+	lerp( t, a, b ) {
 		return a + t * ( b - a );
 	}
 
-	function grad( hash, x, y, z ) {
+	grad( hash, x, y, z ) {
 		let h = hash & 15;
 		let u = h < 8 ? x : y, v = h < 4 ? y : h == 12 || h == 14 ? x : z;
 		return ( ( h & 1 ) == 0 ? u : - u ) + ( ( h & 2 ) == 0 ? v : - v );
 	}
 
-	return {
+  noise( x, y, z ) {
+    let p = this.p;
+    
+    let floorX = Math.floor( x ), 
+        floorY = Math.floor( y ), 
+        floorZ = Math.floor( z );
 
-		noise: function ( x, y, z ) {
+    let X = floorX & 255, 
+        Y = floorY & 255, 
+        Z = floorZ & 255;
 
-			let floorX = Math.floor( x ), 
-          floorY = Math.floor( y ), 
-          floorZ = Math.floor( z );
+    x -= floorX;
+    y -= floorY;
+    z -= floorZ;
 
-			let X = floorX & 255, 
-          Y = floorY & 255, 
-          Z = floorZ & 255;
+    let xMinus1 = x - 1, yMinus1 = y - 1, zMinus1 = z - 1;
+    let u = this.fade( x ), v = this.fade( y ), w = this.fade( z );
+    let  A = p[ X ] + Y, 
+        AA = p[ A ] + Z, 
+        AB = p[ A + 1 ] + Z, 
+         B = p[ X + 1 ] + Y, 
+        BA = p[ B ] + Z, 
+        BB = p[ B + 1 ] + Z;
 
-			x -= floorX;
-			y -= floorY;
-			z -= floorZ;
+    return this.lerp( w, 
+      this.lerp( v, 
+            this.lerp( u, this.grad( p[ AA ], x, y, z ),
+                      this.grad( p[ BA ], xMinus1, y, z ) ),
+            this.lerp( u, this.grad( p[ AB ], x, yMinus1, z ),
+                      this.grad( p[ BB ], xMinus1, yMinus1, z ) ) 
+          ),
+      this.lerp( v, 
+           this.lerp( u, this.grad( p[ AA + 1 ], x, y, zMinus1 ),
+                     this.grad( p[ BA + 1 ], xMinus1, y, z - 1 ) ),
+           this.lerp( u, this.grad( p[ AB + 1 ], x, yMinus1, zMinus1 ),
+                     this.grad( p[ BB + 1 ], xMinus1, yMinus1, zMinus1 ) ) 
+          ) 
+    );
+  }
 
-			let xMinus1 = x - 1, yMinus1 = y - 1, zMinus1 = z - 1;
-			let u = fade( x ), v = fade( y ), w = fade( z );
-			let  A = p[ X ] + Y, 
-          AA = p[ A ] + Z, 
-          AB = p[ A + 1 ] + Z, 
-           B = p[ X + 1 ] + Y, 
-          BA = p[ B ] + Z, 
-          BB = p[ B + 1 ] + Z;
-
-			return lerp( w, 
-          lerp( v, 
-                lerp( u, grad( p[ AA ], x, y, z ),
-                         grad( p[ BA ], xMinus1, y, z ) ),
-                lerp( u, grad( p[ AB ], x, yMinus1, z ),
-                         grad( p[ BB ], xMinus1, yMinus1, z ) ) 
-              ),
-    			lerp( v, 
-               lerp( u, grad( p[ AA + 1 ], x, y, zMinus1 ),
-				                grad( p[ BA + 1 ], xMinus1, y, z - 1 ) ),
-			         lerp( u, grad( p[ AB + 1 ], x, yMinus1, zMinus1 ),
-				                grad( p[ BB + 1 ], xMinus1, yMinus1, zMinus1 ) ) 
-              ) 
-      );
-		}
-	};
-
-};
+}
 
 // =====================================================
 // ../smoothvoxels/meshgenerator/groupcloner.js
@@ -6374,13 +7756,32 @@ class GroupCloner {
           
           let color = colors[voxel.color.id];
           if (!color) {
-            // Recolor the voxel color if there is a recolor defined
-            if (group.recolor) {
-              color = group.recolor.find(c => c.id === voxel.color.id);
-              if (color && !color.material) {
-                voxel.color.material.addColor(color);
+            
+            if (group.swap) {
+              let swap = group.swap.find(s => s.from === voxel.color.id);
+              if (swap) {
+                color = model.colors[swap.to];
+                if (!color) {
+                  throw {
+                    name: 'ModelError',
+                    message: `(${model.name}) Group '${group.id}' Swap color with id '${swap.to}' does not exist`,
+                  };                  
+                }
               }
             }
+            
+            // Recolor the voxel color if there is a recolor defined
+            if (group.recolor) {
+              let reColor = group.recolor.find(c => c.id === voxel.color.id);
+              if (reColor) {
+                
+                if (!reColor.material) {
+                  (color ?? voxel.color).material.addColor(reColor);
+                }
+                color = reColor;
+              }
+            }
+            
             color = color ?? voxel.color;
             colors[voxel.color.id] = color;
           }
@@ -6414,8 +7815,16 @@ class GroupCloner {
   
   static _cloneProperties(group, toClone) {
     for (const property in toClone) {
-      if (group[property] === undefined && property !== 'id' && property !== 'prefab' && property !== 'clone' && property !== 'cloneProcessed' && !property.endsWith('bounds')) {
-        group[property] = toClone[property];
+        // Copy all properties, except: 
+      if (!group[property] && // Properties that are overridden in the new group
+          property !== 'id' && property !== 'prefab' && property !== 'clone' &&  // None clonable group properties
+          !group['smoothS' + property.slice(1)] && !group[property.replace('smoothS', 's')] && // (smooth)scale.. when overridden in the new group
+          !group['smoothR' + property.slice(1)] && !group[property.replace('smoothR', 'r')] && // (smooth)rotate.. when overridden in the new group
+          !group['smoothT' + property.slice(1)] && !group[property.replace('smoothT', 't')] && // (smooth)translate.. when overridden in the new group
+          property !== 'cloneProcessed' && !property.endsWith('bounds')) { // Calculated properties
+        
+          // Clone the property
+          group[property] = toClone[property];
       }
     }
   }
@@ -6428,6 +7837,7 @@ class GroupCloner {
         let newGroup = { id:newGroupId, clone, group:newParent.id };
         this._cloneProperties(newGroup, group);
         newGroup.recolor = newGroup.recolor ?? newParent.recolor;
+        newGroup.swap = newGroup.swap ?? newParent.swap;
         model.groups.createGroup(newGroup);
         this._cloneSubGroups(model, clone, newGroup);
       }
@@ -6449,8 +7859,8 @@ class GroupCloner {
 // =====================================================
 
 class FaceCreator {
-   
-   static createAllFaces(model) {
+     
+  static createAllFaces(model) {
     model.voxels.forEach(function createFaces(voxel) {
       let faceCount = 0;
       // Check which faces should be generated
@@ -6548,15 +7958,15 @@ class FaceCreator {
     }
     
     switch(faceName) {
-      case 'nx' : return planar.x || (planar.nx && voxel.x === bounds.minX);
-      case 'px' : return planar.x || (planar.px && voxel.x === bounds.maxX);
-      case 'ny' : return planar.y || (planar.ny && voxel.y === bounds.minY);
-      case 'py' : return planar.y || (planar.py && voxel.y === bounds.maxY);
-      case 'nz' : return planar.z || (planar.nz && voxel.z === bounds.minZ);
-      case 'pz' : return planar.z || (planar.pz && voxel.z === bounds.maxZ);
+      case 'nx' : return planar.x || (planar.nx && voxel.x === bounds.minX) || (planar.gx && voxel.x !== bounds.minX);
+      case 'px' : return planar.x || (planar.px && voxel.x === bounds.maxX) || (planar.lx && voxel.x !== bounds.maxX);
+      case 'ny' : return planar.y || (planar.ny && voxel.y === bounds.minY) || (planar.gy && voxel.y !== bounds.minY);
+      case 'py' : return planar.y || (planar.py && voxel.y === bounds.maxY) || (planar.ly && voxel.y !== bounds.maxY);
+      case 'nz' : return planar.z || (planar.nz && voxel.z === bounds.minZ) || (planar.gz && voxel.z !== bounds.minZ);
+      case 'pz' : return planar.z || (planar.pz && voxel.z === bounds.maxZ) || (planar.lz && voxel.z !== bounds.maxZ);
       case 'not': return false;
       default: return false;
-    }
+    }    
   }   
 }
 
@@ -6816,7 +8226,7 @@ class Deformer {
   }
   
   static warpAndScatter(model) {
-    let noise = SVOX.Noise().noise;
+    let noise = model.noise;
     let voxels = model.voxels;
     let tile = model.tile;
     
@@ -6846,9 +8256,9 @@ class Deformer {
       }
       
       if (scatter) {
-        xOffset += (Math.random() * 2 - 1) * scatter;
-        yOffset += (Math.random() * 2 - 1) * scatter;
-        zOffset += (Math.random() * 2 - 1) * scatter;
+        xOffset += (model.random() * 2 - 1) * scatter;
+        yOffset += (model.random() * 2 - 1) * scatter;
+        zOffset += (model.random() * 2 - 1) * scatter;
       }
 
       if (xOffset !==0 || yOffset!= 0 || zOffset !== 0) {
@@ -6889,7 +8299,7 @@ class Deformer {
 // ../smoothvoxels/meshgenerator/directionaltransformer.js
 // =====================================================
 
-class SkewAndScaleAxisModifier {
+class DirectionalTransformer {
   
   static modify(model) {
     // Bounds were determined in model.determineBoundsForAllGroups
@@ -6897,6 +8307,7 @@ class SkewAndScaleAxisModifier {
     let scale = false;
     let rotate = false;
     let translate = false;
+    let bend = false;
     let groupParameters = {};
     model.groups.forEach(function(group) {
       
@@ -6906,36 +8317,46 @@ class SkewAndScaleAxisModifier {
         midY: (group.vertexBounds.minY + group.vertexBounds.maxY)/2,
         midZ: (group.vertexBounds.minZ + group.vertexBounds.maxZ)/2    
       }
-
-      parameters.scaleYX = group.scaleYX; scale = scale || parameters.scaleYX;
-      parameters.scaleZX = group.scaleZX; scale = scale || parameters.scaleZX;
-      parameters.scaleXY = group.scaleXY; scale = scale || parameters.scaleXY;
-      parameters.scaleZY = group.scaleZY; scale = scale || parameters.scaleZY;
-      parameters.scaleXZ = group.scaleXZ; scale = scale || parameters.scaleXZ;
-      parameters.scaleYZ = group.scaleYZ; scale = scale || parameters.scaleYZ;
-
-      parameters.rotateX = group.rotateX; rotate = rotate || parameters.rotateX;
-      parameters.rotateY = group.rotateY; rotate = rotate || parameters.rotateY;
-      parameters.rotateZ = group.rotateZ; rotate = rotate || parameters.rotateZ;
-
-      parameters.translateYX = group.translateYX; translate = translate || parameters.translateYX;
-      parameters.translateZX = group.translateZX; translate = translate || parameters.translateZX;
-      parameters.translateXY = group.translateXY; translate = translate || parameters.translateXY;
-      parameters.translateZY = group.translateZY; translate = translate || parameters.translateZY;
-      parameters.translateXZ = group.translateXZ; translate = translate || parameters.translateXZ;
-      parameters.translateYZ = group.translateYZ; translate = translate || parameters.translateYZ;
       
+      let spline = this._interpolateSpline;
+      let linear = this._interpolateLinear;
+      
+      parameters.scaleYX     = group.scaleYX     ?? group.smoothScaleYX;     if (parameters.scaleYX)     { parameters.scaleYXFunc     = group.smoothScaleYX     ? spline : linear; scale = true; };
+      parameters.scaleZX     = group.scaleZX     ?? group.smoothScaleZX;     if (parameters.scaleZX)     { parameters.scaleZXFunc     = group.smoothScaleZX     ? spline : linear; scale = true; };
+      parameters.scaleXY     = group.scaleXY     ?? group.smoothScaleXY;     if (parameters.scaleXY)     { parameters.scaleXYFunc     = group.smoothScaleXY     ? spline : linear; scale = true; };
+      parameters.scaleZY     = group.scaleZY     ?? group.smoothScaleZY;     if (parameters.scaleZY)     { parameters.scaleZYFunc     = group.smoothScaleZY     ? spline : linear; scale = true; };
+      parameters.scaleXZ     = group.scaleXZ     ?? group.smoothScaleXZ;     if (parameters.scaleXZ)     { parameters.scaleXZFunc     = group.smoothScaleXZ     ? spline : linear; scale = true; };
+      parameters.scaleYZ     = group.scaleYZ     ?? group.smoothScaleYZ;     if (parameters.scaleYZ)     { parameters.scaleYZFunc     = group.smoothScaleYZ     ? spline : linear; scale = true; };
+
+      parameters.rotateX     = group.rotateX     ?? group.smoothRotateX;     if (parameters.rotateX)     { parameters.rotateXFunc     = group.smoothRotateX     ? spline : linear; rotate = true; };
+      parameters.rotateY     = group.rotateY     ?? group.smoothRotateY;     if (parameters.rotateY)     { parameters.rotateYFunc     = group.smoothRotateY     ? spline : linear; rotate = true; };
+      parameters.rotateZ     = group.rotateZ     ?? group.smoothRotateZ;     if (parameters.rotateZ)     { parameters.rotateZFunc     = group.smoothRotateZ     ? spline : linear; rotate = true; };
+      
+      parameters.translateYX = group.translateYX ?? group.smoothTranslateYX; if (parameters.translateYX) { parameters.translateYXFunc = group.smoothTranslateYX ? spline : linear; translate = true; };
+      parameters.translateZX = group.translateZX ?? group.smoothTranslateZX; if (parameters.translateZX) { parameters.translateZXFunc = group.smoothTranslateZX ? spline : linear; translate = true; };
+      parameters.translateXY = group.translateXY ?? group.smoothTranslateXY; if (parameters.translateXY) { parameters.translateXYFunc = group.smoothTranslateXY ? spline : linear; translate = true; };
+      parameters.translateZY = group.translateZY ?? group.smoothTranslateZY; if (parameters.translateZY) { parameters.translateZYFunc = group.smoothTranslateZY ? spline : linear; translate = true; };
+      parameters.translateXZ = group.translateXZ ?? group.smoothTranslateXZ; if (parameters.translateXZ) { parameters.translateXZFunc = group.smoothTranslateXZ ? spline : linear; translate = true; };
+      parameters.translateYZ = group.translateYZ ?? group.smoothTranslateYZ; if (parameters.translateYZ) { parameters.translateYZFunc = group.smoothTranslateYZ ? spline : linear; translate = true; };
+
+      if (group.bendYX && group.bendYX.x != 0) { parameters.bendYX = group.bendYX; bend = true; }
+      if (group.bendZX && group.bendZX.x != 0) { parameters.bendZX = group.bendZX; bend = true; }
+      if (group.bendXY && group.bendXY.x != 0) { parameters.bendXY = group.bendXY; bend = true; }
+      if (group.bendZY && group.bendZY.x != 0) { parameters.bendZY = group.bendZY; bend = true; }
+      if (group.bendXZ && group.bendXZ.x != 0) { parameters.bendXZ = group.bendXZ; bend = true; }
+      if (group.bendYZ && group.bendYZ.x != 0) { parameters.bendYZ = group.bendYZ; bend = true; }
+
       groupParameters[group.id] = parameters;      
     }, this);  
     
     // Store the original x, y and z for use in the interpolation
-    if (scale || rotate || translate) {
+    //if (scale || rotate || translate) {
       model.vertices.forEach(function(vertex) {
         vertex.newX = vertex.x;
         vertex.newY = vertex.y;
         vertex.newZ = vertex.z;
       }, this);      
-    }
+    //}
     
     if (scale) {
       this._scale(model, groupParameters);
@@ -6949,6 +8370,9 @@ class SkewAndScaleAxisModifier {
       this._translate(model, groupParameters);
     }
     
+    if (bend) {
+      this._bend(model, groupParameters);
+    }
   }
   
   static _scale(model, groupParameters) {
@@ -6963,33 +8387,33 @@ class SkewAndScaleAxisModifier {
       let z = vertex.newZ;
 
       if (params.scaleYX) {
-        let dist = (x - params.bounds.minX) / (params.bounds.sizeX ?? 1);
-        vertex.y = (vertex.y - params.midY) * this._interpolate(params.scaleYX, dist) + params.midY;
+        let dist = (x - params.bounds.minX) / ((params.bounds.sizeX ?? 1) - 1);
+        vertex.y = (vertex.y - params.midY) * params.scaleYXFunc(params.scaleYX, dist) + params.midY;
       }
 
       if (params.scaleZX) {
-        let dist = (x - params.bounds.minX) / (params.bounds.sizeX ?? 1);
-        vertex.z = (vertex.z - params.midZ) * this._interpolate(params.scaleZX, dist) + params.midZ;
+        let dist = (x - params.bounds.minX) / ((params.bounds.sizeX ?? 1) - 1);
+        vertex.z = (vertex.z - params.midZ) * params.scaleZXFunc(params.scaleZX, dist) + params.midZ;
       }
 
       if (params.scaleXY) {
-        let dist = (y - params.bounds.minY) / (params.bounds.sizeY ?? 1);
-        vertex.x = (vertex.x - params.midX) * this._interpolate(params.scaleXY, dist) + params.midX;
+        let dist = (y - params.bounds.minY) / ((params.bounds.sizeY ?? 1) - 1);
+        vertex.x = (vertex.x - params.midX) * params.scaleXYFunc(params.scaleXY, dist) + params.midX;
       }
 
       if (params.scaleZY) {
-        let dist = (y - params.bounds.minY) / (params.bounds.sizeY ?? 1);
-        vertex.z = (vertex.z - params.midZ) * this._interpolate(params.scaleZY, dist) + params.midZ;
+        let dist = (y - params.bounds.minY) / ((params.bounds.sizeY ?? 1) - 1);
+        vertex.z = (vertex.z - params.midZ) * params.scaleZYFunc(params.scaleZY, dist) + params.midZ;
       }
 
       if (params.scaleXZ) {
-        let dist = (z - params.bounds.minZ) / (params.bounds.sizeZ ?? 1);
-        vertex.x = (vertex.x - params.midX) * this._interpolate(params.scaleXZ, dist) + params.midX;
+        let dist = (z - params.bounds.minZ) / ((params.bounds.sizeZ ?? 1) - 1);
+        vertex.x = (vertex.x - params.midX) * params.scaleXZFunc(params.scaleXZ, dist) + params.midX;
       }
       
       if (params.scaleYZ) {
-        let dist = (z - params.bounds.minZ) / (params.bounds.sizeZ ?? 1);
-        vertex.y = (vertex.y - params.midY) * this._interpolate(params.scaleYZ, dist) + params.midY;
+        let dist = (z - params.bounds.minZ) / ((params.bounds.sizeZ ?? 1) - 1);
+        vertex.y = (vertex.y - params.midY) * params.scaleYZFunc(params.scaleYZ, dist) + params.midY;
       }
       
     }, this);
@@ -7007,20 +8431,20 @@ class SkewAndScaleAxisModifier {
       let z = vertex.newZ;
       
       if (params.rotateX) {
-        let dist = (x - params.bounds.minX) / (params.bounds.sizeX ?? 1);
-        let degrees = this._interpolate(params.rotateX, dist);
+        let dist = (x - params.bounds.minX) / ((params.bounds.sizeX ?? 1) - 1);
+        let degrees = params.rotateXFunc(params.rotateX, dist);
         this._rotateVertex(vertex, 'y', 'z', params.midY, params.midZ, degrees);
       }
 
       if (params.rotateY) {
-        let dist = (y - params.bounds.minY) / (params.bounds.sizeY ?? 1);
-        let degrees = this._interpolate(params.rotateY, dist);
+        let dist = (y - params.bounds.minY) / ((params.bounds.sizeY ?? 1) - 1);
+        let degrees = params.rotateYFunc(params.rotateY, dist);
         this._rotateVertex(vertex, 'x', 'z', params.midX, params.midZ, -degrees);
       }
 
       if (params.rotateZ) {
-        let dist = (z - params.bounds.minZ) / (params.bounds.sizeZ ?? 1);
-        let degrees = this._interpolate(params.rotateZ, dist);
+        let dist = (z - params.bounds.minZ) / ((params.bounds.sizeZ ?? 1) - 1);
+        let degrees = params.rotateZFunc(params.rotateZ, dist);
         this._rotateVertex(vertex, 'x', 'y', params.midX, params.midY, degrees);
       }
 
@@ -7039,57 +8463,151 @@ class SkewAndScaleAxisModifier {
       let z = vertex.newZ;
 
       if (params.translateYX) {
-        let dist = (x - params.bounds.minX) / (params.bounds.sizeX ?? 1);
-        vertex.y += this._interpolate(params.translateYX, dist);
+        let dist = (x - params.bounds.minX) / ((params.bounds.sizeX ?? 1) - 1);
+        vertex.y += params.translateYXFunc(params.translateYX, dist);
       }
 
       if (params.translateZX) {
-        let dist = (x - params.bounds.minX) / (params.bounds.sizeX ?? 1);
-        vertex.z += this._interpolate(params.translateZX, dist);
+        let dist = (x - params.bounds.minX) / ((params.bounds.sizeX ?? 1) - 1);
+        vertex.z += params.translateZXFunc(params.translateZX, dist);
       }
 
       if (params.translateXY) {
-        let dist = (y - params.bounds.minY) / (params.bounds.sizeY ?? 1);
-        vertex.x += this._interpolate(params.translateXY, dist);
+        let dist = (y - params.bounds.minY) / ((params.bounds.sizeY ?? 1) - 1);
+        vertex.x += params.translateXYFunc(params.translateXY, dist);
       }
 
       if (params.translateZY) {
-        let dist = (y - params.bounds.minY) / (params.bounds.sizeY ?? 1);
-        vertex.z += this._interpolate(params.translateZY, dist);
+        let dist = (y - params.bounds.minY) / ((params.bounds.sizeY ?? 1) - 1);
+        vertex.z += params.translateZYFunc(params.translateZY, dist);
       }
 
       if (params.translateXZ) {
-        let dist = (z - params.bounds.minZ) / (params.bounds.sizeZ ?? 1);
-        vertex.x += this._interpolate(params.translateXZ, dist);
+        let dist = (z - params.bounds.minZ) / ((params.bounds.sizeZ ?? 1) - 1);
+        vertex.x += params.translateXZFunc(params.translateXZ, dist);
       }
 
       if (params.translateYZ) {
-        let dist = (z - params.bounds.minZ) / (params.bounds.sizeZ ?? 1);
-        vertex.y += this._interpolate(params.translateYZ, dist);
+        let dist = (z - params.bounds.minZ) / ((params.bounds.sizeZ ?? 1) - 1);
+        vertex.y += params.translateYZFunc(params.translateYZ, dist);
       }
       
     }, this);
   }
   
+  static _bend(model, groupParameters) {  
+    model.vertices.forEach(function(vertex) {
+      let params = groupParameters[vertex.group.id];
+      
+      // Use the same vertex position to determine the bending
+      let x = vertex.x;
+      let y = vertex.y;
+      let z = vertex.z;
+      
+      if (params.bendYX) {
+        let dist = (x - params.bounds.minX) / ((params.bounds.sizeX ?? 1) - 1);
+        this._bendVertex(vertex, params.bendYX.x, params.bendYX.y, 'y', 'x', params.bounds.minY, params.bounds.maxY, params.bounds.maxX, dist);
+      }
+
+      if (params.bendZX) {
+        let dist = (x - params.bounds.minX) / ((params.bounds.sizeX ?? 1) - 1);
+        this._bendVertex(vertex, params.bendZX.x, params.bendZX.y, 'z', 'x', params.bounds.minZ, params.bounds.maxZ, params.bounds.maxX, dist);
+      }
+
+      if (params.bendXY) {
+        let dist = (y - params.bounds.minY) / ((params.bounds.sizeY ?? 1) - 1);
+        this._bendVertex(vertex, params.bendXY.x, params.bendXY.y, 'x', 'y', params.bounds.minX, params.bounds.maxX, params.bounds.maxY, dist);
+      }
+      
+      if (params.bendZY) {
+        let dist = (y - params.bounds.minY) / ((params.bounds.sizeY ?? 1) - 1);
+        this._bendVertex(vertex, params.bendZY.x, params.bendZY.y, 'z', 'y', params.bounds.minZ, params.bounds.maxZ, params.bounds.maxY, dist);
+      }
+
+      if (params.bendXZ) {
+        let dist = (z - params.bounds.minZ) / ((params.bounds.sizeZ ?? 1) - 1);
+        this._bendVertex(vertex, params.bendXZ.x, params.bendXZ.y, 'x', 'z', params.bounds.minX, params.bounds.maxX, params.bounds.maxZ, dist);
+      }
+      
+      if (params.bendYZ) {
+        let dist = (z - params.bounds.minZ) / ((params.bounds.sizeZ ?? 1) - 1);
+        this._bendVertex(vertex, params.bendYZ.x, params.bendYZ.y, 'y', 'z', params.bounds.minY, params.bounds.maxY, params.bounds.maxZ, dist);
+      }
+    }, this);
+  }  
+
+  static _bendVertex(vertex, deg, center, axisA, axisB, minA, maxA, maxB, dist) {
+    
+    // Center can be positive (bend to right) or negative (bend to left), so also '0' or '-0'.
+    // But -0 === 0 so you cant simply do center >= 0. Nor does Math.sign(center) work. 
+    // The devide does work because Math.sign(1/-0) --> Math.sign(-infinity) --> -1
+    let bendRight = Math.sign(1/center) >= 0;
+    let fromTop = deg < 0;
+    if (fromTop) { 
+      dist = 1 - dist; 
+      deg  = -deg;
+    }
+    let cos = Math.cos(dist * deg / 180 * Math.PI);
+    let sin = Math.sin(dist * deg / 180 * Math.PI);
+    
+    if (bendRight && !fromTop) {
+
+      // Perform bending operation bottom to right
+      let radius = maxA + center - vertex[axisA];    
+      vertex[axisA] = -radius * cos + maxA + center;
+      vertex[axisB] =  radius * sin;
+    }
+    else if (!bendRight && !fromTop) {
+
+      // Perform bending operation bottom to left
+      let radius = minA + center - vertex[axisA];    
+      vertex[axisA] = -radius * cos + minA + center; 
+      vertex[axisB] = -radius * sin;
+    }
+    
+    else if (bendRight && fromTop) {
+      
+      // Perform bending operation top to right
+      let radius = maxA + center - vertex[axisA];    
+      vertex[axisA] = -radius * cos + maxA + center;
+      vertex[axisB] = -radius * sin + maxB;
+    }
+    else { // (!bendRight && fromTop)
+      
+      // Perform bending operation top to left
+      let radius = -minA + center - vertex[axisA];    
+      vertex[axisA] = -radius * cos + minA + center;
+      vertex[axisB] =  radius * sin + maxB;
+    }
+  }
+    
   static _rotateVertex(vertex, axisA, axisB, midA, midB, deg) {
     let rad = Math.PI * deg / 180.0; // Convert degrees to radians
-    let cosRad = Math.cos(rad);
-    let sinRad = Math.sin(rad);
+    let cos = Math.cos(rad);
+    let sin = Math.sin(rad);
     
     // Translate back to origin
     let a = vertex[axisA] - midA;
     let b = vertex[axisB] - midB;
     
     // Rotate point
-    let aRotated = a * cosRad - b * sinRad;
-    let bRotated = a * sinRad + b * cosRad;
+    let aRotated = a * cos - b * sin;
+    let bRotated = a * sin + b * cos;
     
     // Translate point back
     vertex[axisA] = aRotated + midA;
     vertex[axisB] = bRotated + midB;
   }
   
-  static _interpolate(values, d) {
+  static _interpolate(values, newLength, interpolationFunction) {
+    let newValues = [];
+    for (let d = 0; d<=newLength; d++) {
+      newValues.push(interpolationFunction(values, d / newLength));
+    }
+    return newValues;
+  }
+  
+  static _interpolateLinear(values, d) {
       if(values.length < 2) throw new Error("Interpolation arrray must contain at least 2 values.");
       if(d < 0 || d > 1) throw new Error("Interpolation value d must be a float between 0 and 1.");
 
@@ -7104,6 +8622,42 @@ class SkewAndScaleAxisModifier {
       let higherValue = values[Math.ceil(index)];
 
       return lowerValue + fraction * (higherValue - lowerValue);
+  } 
+  
+  // https://en.wikipedia.org/wiki/Cubic_Hermite_spline
+  static _interpolateSpline(values, d) {
+    if(values.length < 2) throw new Error("Interpolation arrray must contain at least 2 values.");
+    if(d < 0 || d > 1) throw new Error("Interpolation value d must be a float between 0 and 1.");
+
+    let n = values.length - 1;
+
+    if (d >= 1) { 
+        return values[n];
+    }
+
+    let scaledT = d * n;
+    let i = Math.floor(scaledT);
+    let fracT = scaledT - i;
+
+    let p0 = i > 0 ? values[i - 1] : values[i];
+    let p1 = values[i];
+    let p2 = i < n ? values[i + 1] : values[i];
+    let p3 = (i + 1) < n ? values[i + 2] : (2*values[i + 1] - values[i]);
+
+    let v0 = ((p2 - p0) * 0.5);
+    let v1 = ((p3 - p1) * 0.5);
+
+    let t2 = fracT * fracT;
+    let t3 = t2 * fracT;
+
+    let qa = (2 * t3) - (3 * t2) + 1;
+    let qb = t3 - (2 * t2) + fracT;
+    let qc = (-2 * t3) + (3 * t2);
+    let qd = t3 - t2;
+
+    let value = qa * p1 + qb * v0 + qc * p2 + qd * v1;
+
+    return value;
   }  
 }
 
@@ -7133,8 +8687,7 @@ class VertexTransformer {
       let transformations = [];      
       
       // First move the group to the origin (0,0,0) as the starting point for all calculations
-      let center = group.bounds.getCenter();
-      //console.log(`${group.id} - ${JSON.stringify(group.bounds)} - ${JSON.stringify(center)}`)
+      let center = group.vertexCenter;
       transformations.push( { type:'translate', x:-center.x, y:-center.y, z:-center.z } );
       
       for (let g = 0; g < groups.length; g++) {
@@ -7370,29 +8923,7 @@ class NormalsCalculator {
               (faceName === 'nx' || faceName === 'px' || faceName === 'ny' || faceName === 'py')) {
             normal.z = 0;
           }
-          
-          // Flattened or clamped sides, make normals peripendicular to the side
-          if (voxel.material.type === SVOX.BOTH) {
-            if (faceName === 'nx' && (peripendicularNX || (clamp && (clamp.x || clamp.nx)) || (flatten && (flatten.x || flatten.nx)))) {
-              normal.x = -1; normal.y = 0; normal.z = 0;
-            } 
-            if (faceName === 'px' && (peripendicularPX || (clamp && (clamp.x || clamp.px)) || (flatten && (flatten.x || flatten.px)))) {
-              normal.x = 1; normal.y = 0; normal.z = 0;
-            } 
-            if (faceName === 'ny' && (peripendicularNY || (clamp && (clamp.y || clamp.ny)) || (flatten && (flatten.y || flatten.ny)))) {
-              normal.x = 0; normal.y = -1; normal.z = 0;
-            } 
-            if (faceName === 'py' && (peripendicularPY || (clamp && (clamp.y || clamp.py)) || (flatten && (flatten.y || flatten.py)))) {
-              normal.x = 0; normal.y = 1; normal.z = 0;
-            } 
-            if (faceName === 'nz' && (peripendicularNZ || (clamp && (clamp.z || clamp.nz)) || (flatten && (flatten.z || flatten.nz)))) {
-              normal.x = 0; normal.y = 0; normal.z = -1;
-            } 
-            if (faceName === 'pz' && (peripendicularPZ || (clamp && (clamp.z || clamp.pz)) || (flatten && (flatten.z || flatten.pz)))) {
-              normal.x = 0; normal.y = 0; normal.z = 1;
-            } 
-          }
-           
+                    
           // Clean up vertex normals which are almost level, and make them level. (not really needed, but makes for a cleaner model)
           if (Math.abs(normal.x)<0.0001) normal.x = 0;
           if (Math.abs(normal.y)<0.0001) normal.y = 0;
@@ -7526,10 +9057,18 @@ class NormalsCalculator {
 }
 
 // =====================================================
-// ../smoothvoxels/meshgenerator/octree.js
+// ../smoothvoxels/meshgenerator/octreeNEW.js
 // =====================================================
 
 class Octree {
+  
+  // Algoritm:
+  // Divide the bounding box in 8 equal partitions (x, y and z)
+  // Sort all triangles by their mid point into one of the partitions 
+  // (i.e. the partition boundingboxes may overlap)
+  // Remove empty partitions
+  // Subdivide each partition with more than 9 triangles again
+  // Add AO Sides as separate partition to the root
   
   // Failed optimization attempts:
   // - Binary tree instead of octree: marginally slower
@@ -7537,68 +9076,112 @@ class Octree {
   //   (probably because a only very small percentage of the boxes are hit by a sample, and the rest are already skipped)
   // - in triangleDistance first do a check if origin and end are both smaller/larger than the min/max of x, y & z (similar to hit box): slower
   // - change the triangles array from [ [ {v1x,v1y,v1z}, {v2z,v2y,v2z}, {v3x,v3y,v3z} ], ... ] to [ v1x,v1y,v1z, v2z,v2y,v2z, v3x,v3y,v3z, ... ]: only marginally faster
+  // - change the triangles array from [ [ {v1x,v1y,v1z}, {v2z,v2y,v2z}, {v3x,v3y,v3z} ], ... ] to [ new Float32Array(9), new Float32Array(9), ... ]: marginally slower
+  
+  // Successful optimization attempt (current):
+  // - change the triangles array from [ [ {v1x,v1y,v1z}, {v2z,v2y,v2z}, {v3x,v3y,v3z} ], ... ] to new Float32Array(N): On small models marginally faster on complex lit/ao models 35% faster
     
   constructor(model) {
     const scale = Math.min(model.scale.x, model.scale.y, model.scale.z);
     const BIAS     = 0.1 * scale;
     
-    let triangles = this._getAllFaceTriangles(model); 
+    const triangles = this._getAllFaceTriangles(model); 
     this.octree = this._trianglesToOctree(triangles);
     if (model.aoSides)
       this.octree = this._aoSidesToOctree(model, this.octree, BIAS);    
   }
   
   _getAllFaceTriangles(model) {
-    let triangles = [];
+    // Step 1: Count the faces to determine the length of the initial triangles array
+    // Step 2: Fill the array
+    let faceCount = 0;
+    
+    // Count all faces in the voxels
     model.voxels.forEach(function(voxel) {
       if (voxel.material.opacity < 0.75) return;
       if (!voxel.material.castShadow) return;
 
       for (let faceName in voxel.faces) {
-        let face = voxel.faces[faceName];
-        
-        // Hidden faces cannot occulude 
-        if (face.hidden) 
-          continue;
-        
-        triangles.push([face.vertices[2], face.vertices[1], face.vertices[0]]);
-        triangles.push([face.vertices[0], face.vertices[3], face.vertices[2]]);        
+        // Hidden faces cannot occulude (skipped faces are not in the model)
+        if (!voxel.faces[faceName].hidden)  {
+          faceCount++;
+        }
+      }
+    }, this, true); // Visible only
+    
+    // 2 triangles per face, each with three vertices, each with x, y and z    
+    let triangles = new Float32Array(faceCount * 2 * 3 * 3); 
+    let index = 0;
+
+    // Fill the triangles array
+    model.voxels.forEach(function(voxel) {
+      if (voxel.material.opacity < 0.75) return;
+      if (!voxel.material.castShadow) return;
+
+      for (let faceName in voxel.faces) {
+        const face = voxel.faces[faceName];
+        if (!face.hidden) {
+          let vertices = face.vertices;
+          triangles[index++] = vertices[2].x; triangles[index++] = vertices[2].y; triangles[index++] = vertices[2].z;
+          triangles[index++] = vertices[1].x; triangles[index++] = vertices[1].y; triangles[index++] = vertices[1].z;
+          triangles[index++] = vertices[0].x; triangles[index++] = vertices[0].y; triangles[index++] = vertices[0].z;
+
+          triangles[index++] = vertices[0].x; triangles[index++] = vertices[0].y; triangles[index++] = vertices[0].z;
+          triangles[index++] = vertices[3].x; triangles[index++] = vertices[3].y; triangles[index++] = vertices[3].z;
+          triangles[index++] = vertices[2].x; triangles[index++] = vertices[2].y; triangles[index++] = vertices[2].z;
+        }
       }
     }, this, true); // Visible only
         
     return triangles;
-  }
+  }  
   
   _trianglesToOctree(triangles) {
-    let length = triangles.length;
+    // 3 vertices per triangle with x, y and z all in one Float32Array
+    let count = triangles.length/9;   
 
-    if (length <= 9) { // Tested optimal for the Hello SVOX model AO & Shadow
+    if (count <= 9) { // Tested optimal for the Hello SVOX model AO & Shadow
       return this._trianglesToPartition(triangles);      
     }
     else {
       
       let midx = 0, midy = 0, midz = 0;
-      for(let t=0; t<length; t++) {
-        let triangle = triangles[t];
-        midx += triangle[0].x + triangle[1].x + triangle[2].x;
-        midy += triangle[0].y + triangle[1].y + triangle[2].y;
-        midz += triangle[0].z + triangle[1].z + triangle[2].z;
+      for(let t=0; t<count*9; t+=3) {
+        midx += triangles[t];
+        midy += triangles[t+1];
+        midz += triangles[t+2];
       }
-      midx /= length;   // Don't divide by 3 so we don't have to do that below
-      midy /= length;
-      midz /= length;
+      midx /= count;   // Don't divide by 3 so we don't have to do that below
+      midy /= count;
+      midz /= count;
       
-      let partitions = []
-      for(let t=0; t<length; t++) {
-        let triangle = triangles[t];
-        let x = (triangle[0].x + triangle[1].x + triangle[2].x) < midx ? 0 : 1;
-        let y = (triangle[0].y + triangle[1].y + triangle[2].y) < midy ? 0 : 1;
-        let z = (triangle[0].z + triangle[1].z + triangle[2].z) < midz ? 0 : 1;
-        let index = x + y*2 + z*4;
-        if (partitions[index])
-          partitions[index].push(triangle);
-        else
-          partitions[index] = [ triangle ];
+      let counts = [0,0,0,0,0,0,0,0];
+      for(let t=0; t<count*9; t+=9) {
+        const x = (triangles[t+0] + triangles[t+3] + triangles[t+6]) < midx ? 0 : 1;
+        const y = (triangles[t+1] + triangles[t+4] + triangles[t+7]) < midy ? 0 : 1;
+        const z = (triangles[t+2] + triangles[t+5] + triangles[t+8]) < midz ? 0 : 1;
+        counts[x + y*2 + z*4]++;
+      }      
+      
+      let partitions = [];
+      let pi = [0,0,0,0,0,0,0,0];
+      for(let t=0; t<count*9; t+=9) {
+        const x = (triangles[t+0] + triangles[t+3] + triangles[t+6]) < midx ? 0 : 1;
+        const y = (triangles[t+1] + triangles[t+4] + triangles[t+7]) < midy ? 0 : 1;
+        const z = (triangles[t+2] + triangles[t+5] + triangles[t+8]) < midz ? 0 : 1;
+        const index = x + y*2 + z*4;
+        
+        let p = partitions[index];
+        if (!p) {
+          // First triangle for this index, so create the array
+          p = new Float32Array(counts[index]*9);
+          partitions[index] = p;
+        }
+        
+        // Copy the x, y and z of the 3 vertices
+        for (let i = 0; i < 9; i++) {
+          p[pi[index]++] = triangles[t+i];
+        }
       }
         
       // Remove empty partitions
@@ -7637,19 +9220,18 @@ class Octree {
   _trianglesToPartition(triangles) {    
     let partition = { 
       minx: Number.MAX_VALUE, miny: Number.MAX_VALUE, minz: Number.MAX_VALUE,
-      maxx: -Number.MAX_VALUE, maxy: -Number.MAX_VALUE, maxz: -Number.MAX_VALUE,
+      maxx: -Number.MAX_VALUE, maxy: -Number.MAX_VALUE, maxz: -Number.MAX_VALUE, 
       triangles: triangles
     }
 
     let length = triangles.length;
-    for(let t=0; t<length; t++) {
-      let triangle = triangles[t];
-      partition.minx = Math.min(partition.minx, triangle[0].x, triangle[1].x, triangle[2].x);
-      partition.miny = Math.min(partition.miny, triangle[0].y, triangle[1].y, triangle[2].y);
-      partition.minz = Math.min(partition.minz, triangle[0].z, triangle[1].z, triangle[2].z);
-      partition.maxx = Math.max(partition.maxx, triangle[0].x, triangle[1].x, triangle[2].x);
-      partition.maxy = Math.max(partition.maxy, triangle[0].y, triangle[1].y, triangle[2].y);
-      partition.maxz = Math.max(partition.maxz, triangle[0].z, triangle[1].z, triangle[2].z);
+    for(let t=0; t<length; t+=9) {
+      partition.minx = Math.min(partition.minx, triangles[t+0], triangles[t+3], triangles[t+6]);
+      partition.miny = Math.min(partition.miny, triangles[t+1], triangles[t+4], triangles[t+7]);
+      partition.minz = Math.min(partition.minz, triangles[t+2], triangles[t+5], triangles[t+8]);
+      partition.maxx = Math.max(partition.maxx, triangles[t+0], triangles[t+3], triangles[t+6]);
+      partition.maxy = Math.max(partition.maxy, triangles[t+1], triangles[t+4], triangles[t+7]);
+      partition.maxz = Math.max(partition.maxz, triangles[t+2], triangles[t+5], triangles[t+8]);
     }
     
     return partition;    
@@ -7722,8 +9304,8 @@ class Octree {
         return true;
     }
     return false;    
-  }  
-  
+  } 
+   
   _distanceToOctree(origin, direction, max, end, face, octree = null) {
     octree = octree ?? this.octree;
         
@@ -7736,7 +9318,7 @@ class Octree {
 
     let minDistance = null;
     for (let p=0; p < octree.partitions.length; p++) { 
-      let distance = this._distanceToOctree(origin, direction, max, end, face, octree.partitions[p]);
+      const distance = this._distanceToOctree(origin, direction, max, end, face, octree.partitions[p]);
       if (distance) {
         minDistance = Math.min(minDistance ?? max, distance);
       }      
@@ -7746,36 +9328,32 @@ class Octree {
 
   // Algorithm copied from https://www.gamedev.net/zakwayda
   // https://www.gamedev.net/forums/topic/338987-aabb-line-segment-intersection-test/3209917/
-  // Rewritten for js and added the quick tests at the top, and removed divisions to improve speed
+  // Rewritten for js and removed divisions to improve speed
+  // Tried many different versions even using ChatGPT, this is still the fastest I found
   _hitsBox(originX, originY, originZ, endX, endY, endZ, box) {
-    
-    // Check if the entire line is fully outside of the box planes
-    if (originX < box.minx && endX < box.minx) return false;
-    if (originX > box.maxx && endX > box.maxx) return false;
-    if (originY < box.miny && endY < box.miny) return false;
-    if (originY > box.maxy && endY > box.maxy) return false;
-    if (originZ < box.minz && endZ < box.minz) return false;
-    if (originZ > box.maxz && endZ > box.maxz) return false;
-    
-    let dx = (endX-originX);
-    let dy = (endY-originY);
-    let dz = (endZ-originZ);
-    let ex = (box.maxx-box.minx);
-    let ey = (box.maxy-box.miny);
-    let ez = (box.maxz-box.minz);
-    let cx = (originX*2 + dx) - (box.minx + box.maxx);
-    let cy = (originY*2 + dy) - (box.miny + box.maxy);
-    let cz = (originZ*2 + dz) - (box.minz + box.maxz);
-    let adx = Math.abs(dx);
-    let ady = Math.abs(dy);
-    let adz = Math.abs(dz);
-
+       
+    const dx  = endX - originX;
+    const adx = Math.abs(dx);
+    const ex  = box.maxx - box.minx;
+    const cx  = (originX*2 + dx) - (box.minx + box.maxx);
     if (Math.abs(cx) > ex + adx)
         return false;
+
+    const dy  = endY - originY;
+    const ady = Math.abs(dy);
+    const ey  = box.maxy - box.miny;
+    const cy  = (originY*2 + dy) - (box.miny + box.maxy);
     if (Math.abs(cy) > ey + ady)
         return false;
+
+    const dz  = endZ - originZ;
+    const adz = Math.abs(dz);
+    const ez  = box.maxz - box.minz;
+    const cz  = (originZ*2 + dz) - (box.minz + box.maxz);
+
     if (Math.abs(cz) > ez + adz)
         return false;
+
     if (Math.abs(dy * cz - dz * cy) > ey * adz + ez * ady + Number.EPSILON)
         return false;
     if (Math.abs(dz * cx - dx * cz) > ez * adx + ex * adz + Number.EPSILON)
@@ -7784,14 +9362,12 @@ class Octree {
        return false;        
     
     return true;
-  }  
+  } 
   
   _hitsTriangles(triangles, originX, originY, originZ, directionX, directionY, directionZ, max) {  
 
-    for (let t=0; t < triangles.length; t++) {
-      let triangle = triangles[t];
-      
-      let distance = this._triangleDistance(triangle[0], triangle[1], triangle[2], originX, originY, originZ, directionX, directionY, directionZ);
+    for (let t=0; t < triangles.length; t+=9) {
+      const distance = this._triangleDistance(triangles, t, originX, originY, originZ, directionX, directionY, directionZ);
       if ((distance ?? max) < max)
         return true
     }
@@ -7802,10 +9378,8 @@ class Octree {
   _distanceToTriangles(triangles, originX, originY, originZ, directionX, directionY, directionZ, max) {  
     let minDistance = null;
     
-    for (let t=0; t < triangles.length; t++) {
-      let triangle = triangles[t];
-      
-      let distance = this._triangleDistance(triangle[0], triangle[1], triangle[2], originX, originY, originZ, directionX, directionY, directionZ);
+    for (let t=0; t < triangles.length; t+=9) {
+      const distance = this._triangleDistance(triangles, t, originX, originY, originZ, directionX, directionY, directionZ);
       if (distance) {
         minDistance = Math.min(minDistance || max, distance);
       }     
@@ -7818,60 +9392,48 @@ class Octree {
   // https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
   // Adapted to return distance and minimize object allocations
   // Note: direction must be normalized.
-  _triangleDistance(vertex0, vertex1, vertex2, originX, originY, originZ, directionX, directionY, directionZ) {   
-    let edge1x = vertex1.x - vertex0.x;
-    let edge1y = vertex1.y - vertex0.y;
-    let edge1z = vertex1.z - vertex0.z;
-    let edge2x = vertex2.x - vertex0.x;
-    let edge2y = vertex2.y - vertex0.y;
-    let edge2z = vertex2.z - vertex0.z;
-    
-    // Compute the normal of the triangle.
-    let normalx = edge1y * edge2z - edge1z * edge2y;
-    let normaly = edge1z * edge2x - edge1x * edge2z;
-    let normalz = edge1x * edge2y - edge1y * edge2x;
-
-    // Compute the dot product between the normal and the direction of the ray.
-    // This sometimes looks better, sometimes worse, so I decided to leave it out.
-    //let dot = normalx * direction.x + normaly * direction.y + normalz * direction.z;
-    //if (dot > 0) {
-    //  // The ray intersects the triangle from the back.
-    //  return null;
-    //}     
+  _triangleDistance(triangles, index, originX, originY, originZ, directionX, directionY, directionZ) {   
+  
+    const edge1x = triangles[index+3] - triangles[index+0];  // v1.x - v0.x
+    const edge1y = triangles[index+4] - triangles[index+1];  // v1.y - v0.y
+    const edge1z = triangles[index+5] - triangles[index+2];  // v1.z - v0.z
+    const edge2x = triangles[index+6] - triangles[index+0];  // v2.x - v0.x
+    const edge2y = triangles[index+7] - triangles[index+1];  // v2.y - v0.y
+    const edge2z = triangles[index+8] - triangles[index+2];  // v2.z - v0.z
 
     // h = crossProduct(direction, edge2)
-    let h0 = directionY * edge2z - directionZ * edge2y;
-    let h1 = directionZ * edge2x - directionX * edge2z; 
-    let h2 = directionX * edge2y - directionY * edge2x;
+    const h0 = directionY * edge2z - directionZ * edge2y;
+    const h1 = directionZ * edge2x - directionX * edge2z; 
+    const h2 = directionX * edge2y - directionY * edge2x;
     
     // a = dotProduct(edge1, h)
-    let a = edge1x * h0 + edge1y * h1 + edge1z * h2;
+    const a = edge1x * h0 + edge1y * h1 + edge1z * h2;
     if (a > -Number.EPSILON && a < Number.EPSILON)
         return null;    // This ray is parallel to this triangle.
     
-    let f = 1.0/a;
-    let sx = originX - vertex0.x;
-    let sy = originY - vertex0.y;
-    let sz = originZ - vertex0.z;
+    const f = 1.0/a;
+    const sx = originX - triangles[index+0];
+    const sy = originY - triangles[index+1];
+    const sz = originZ - triangles[index+2];
     
     // u = f * dotProduct(s, h);
-    let u = f * (sx * h0 + sy * h1 + sz * h2);
+    const u = f * (sx * h0 + sy * h1 + sz * h2);
     if (u < 0.0 || u > 1.0)
         return null;
     
     // q = crossProduct(s, edge1)
-    let q0 = sy * edge1z - sz * edge1y;
-    let q1 = sz * edge1x - sx * edge1z;
-    let q2 = sx * edge1y - sy * edge1x;
+    const q0 = sy * edge1z - sz * edge1y;
+    const q1 = sz * edge1x - sx * edge1z;
+    const q2 = sx * edge1y - sy * edge1x;
     
     // v = f * dotProduct(direction, q);
-    let v = f * (directionX * q0 + directionY * q1 + directionZ * q2);
+    const v = f * (directionX * q0 + directionY * q1 + directionZ * q2);
     if (v < 0.0 || u + v > 1.0)
         return null;
     
     // At this stage we can compute t to find out where the intersection point is on the line.
     // t = f * dotProduct(edge2, q)
-    let t = f * (edge2x * q0 + edge2y * q1 + edge2z * q2);
+    const t = f * (edge2x * q0 + edge2y * q1 + edge2z * q2);
     if (t <= Number.EPSILON) 
         return null;  // This means that there is a line intersection but not a ray intersection.
       
@@ -7895,12 +9457,14 @@ class Octree {
 
 class AOCalculator {
   
-  static calculateAmbientOcclusion(model) {
+  static shouldCalculate(model) {
     let doAo = model.ao || model.materials.find(function(m) { return m.ao; } );
-    if (!doAo) 
+    return doAo;
+  }
+  
+  static calculateAmbientOcclusion(model, octree) {
+    if (!this.shouldCalculate(model))
       return;
-
-    let octree = new Octree(model);
     
     let nrOfSamples = model.aoSamples;
     let samples = this._generateFibonacciSamples(nrOfSamples);
@@ -8012,15 +9576,17 @@ class AOCalculator {
 
 class LightsCalculator {
   
-  static calculateLights(model) {
-
-    if (model.lights.length === 0)
+  static shouldCalculate(model) {
+    return model.lights.length > 0;
+  }
+  
+  static calculateLights(model, octree) {
+    if (!this.shouldCalculate(model))
       return;
     
     const scale = Math.min(model.scale.x, model.scale.y, model.scale.z);
     const BIAS     = 0.1 * scale;
     const ONE_BIAS = 1 - BIAS;
-    let octree = new Octree(model);
     
     // To calculate the transformation matrix, process all transformations in reverse oder
     let positionTransformationMatrix = new Matrix(); 
@@ -8495,7 +10061,7 @@ class UVAssigner {
         mapTransform.vscale = 1;
       }
       
-      let mapId = material.map || material.normalMap || material.roughnessMap || material.metalnessMap ||  
+      let mapId = material.map || material.bumpMap || material.normalMap || material.roughnessMap || material.metalnessMap ||  
                   material.displacementMap || material.alphaMap || material.emissiveMap ||  
                   material.thicknessMap || material.transmissionMap || material.specularColorMap || material.specularIntensityMap ||
                   material.specularMap || material.clearcoatMap || material.clearcoatNormalMap || material.clearcoatRoughnessMap;
@@ -8516,6 +10082,7 @@ class UVAssigner {
 
         if ((material.map && model.textures.getById(material.map).cube) || 
             (material.normalMap && model.textures.getById(material.normalMap).cube) ||
+            (material.bumpMap && model.textures.getById(material.bumpMap).cube) ||
             (material.roughnessMap && model.textures.getById(material.roughnessMap).cube) ||
             (material.metalnessMap && model.textures.getById(material.metalnessMap).cube) ||
             (material.displacementMap && model.textures.getById(material.displacementMap).cube) ||
@@ -8668,16 +10235,17 @@ class Simplifier {
   // axis 3 is the movement direction
   // v1, v2 of the last face are candidates for removal
   static _mergeFaces(context, voxel, axis1, axis2, axis3, faceName, v0, v1, v2, v3) {
-    let face = null;
-    if (voxel)
-      face = voxel.faces[faceName];
-
+    const MAXDIFF = 0.00000000001;
+    
+    let face = voxel?.faces[faceName];
+    
     if (voxel && context.lastVoxel && 
-        (voxel.material.simplify === true || (voxel.material.simplify === undefined && context.model.simplify === true)) && 
-        face && context.lastFace &&
+        face && context.lastFace &&         
         voxel.color === context.lastVoxel.color &&
         voxel[axis1] === context.lastVoxel[axis1] &&
-        voxel[axis2] === context.lastVoxel[axis2]) {
+        voxel[axis2] === context.lastVoxel[axis2] &&
+        (voxel.material.simplify === true || (voxel.material.simplify === undefined && context.model.simplify === true))
+       ) {
         
         let faceNormals = face.normals;
         let lastFaceNormals = context.lastFace.normals;
@@ -8731,12 +10299,12 @@ class Simplifier {
             faceAo[2] === lastFaceAo[2] &&
             faceAo[3] === lastFaceAo[3] &&
             
-            (Math.abs(lastFaceVertices[v1][axis1] - (1-ratioLeft) * faceVertices[v1][axis1] - ratioLeft * lastFaceVertices[v0][axis1]) <= Number.EPSILON * 10 &&
-             Math.abs(lastFaceVertices[v1][axis2] - (1-ratioLeft) * faceVertices[v1][axis2] - ratioLeft * lastFaceVertices[v0][axis2]) <= Number.EPSILON * 10 &&
-             Math.abs(lastFaceVertices[v1][axis3] - (1-ratioLeft) * faceVertices[v1][axis3] - ratioLeft * lastFaceVertices[v0][axis3]) <= Number.EPSILON * 10 &&
-             Math.abs(lastFaceVertices[v2][axis1] - (1-ratioRight) * faceVertices[v2][axis1] - ratioRight * lastFaceVertices[v3][axis1]) <= Number.EPSILON * 10 &&
-             Math.abs(lastFaceVertices[v2][axis2] - (1-ratioRight) * faceVertices[v2][axis2] - ratioRight * lastFaceVertices[v3][axis2]) <= Number.EPSILON * 10 &&
-             Math.abs(lastFaceVertices[v2][axis3] - (1-ratioRight) * faceVertices[v2][axis3] - ratioRight * lastFaceVertices[v3][axis3]) <= Number.EPSILON * 10 )
+            (Math.abs(lastFaceVertices[v1][axis1] - (1-ratioLeft) * faceVertices[v1][axis1] - ratioLeft * lastFaceVertices[v0][axis1]) <= MAXDIFF &&
+             Math.abs(lastFaceVertices[v1][axis2] - (1-ratioLeft) * faceVertices[v1][axis2] - ratioLeft * lastFaceVertices[v0][axis2]) <= MAXDIFF &&
+             Math.abs(lastFaceVertices[v1][axis3] - (1-ratioLeft) * faceVertices[v1][axis3] - ratioLeft * lastFaceVertices[v0][axis3]) <= MAXDIFF &&
+             Math.abs(lastFaceVertices[v2][axis1] - (1-ratioRight) * faceVertices[v2][axis1] - ratioRight * lastFaceVertices[v3][axis1]) <= MAXDIFF &&
+             Math.abs(lastFaceVertices[v2][axis2] - (1-ratioRight) * faceVertices[v2][axis2] - ratioRight * lastFaceVertices[v3][axis2]) <= MAXDIFF &&
+             Math.abs(lastFaceVertices[v2][axis3] - (1-ratioRight) * faceVertices[v2][axis3] - ratioRight * lastFaceVertices[v3][axis3]) <= MAXDIFF )
            ) 
         {
           // Everything checks out, so add this face to the last one
@@ -8852,7 +10420,8 @@ class FaceAligner {
         // but two vertices it is dependant on are moved in the 'wrong' direction, resulting 
         // in a concave quad. Since deforming should not make the quad very badly concave
         // this seems enough to prevent ugly artefacts in these edge cases.
-
+        
+        let c = face.vertexColors;
         if (distance1toMid < maxDist || distance3toMid < maxDist) {
           // If v1 or v3 is close to the mid point we may have a rare concave quad.
           // Switch the default triangles so this does not show up
@@ -8870,14 +10439,18 @@ class FaceAligner {
           // If v0 or v2 is close to the mid point we may have a rare concave quad.
           // Keep the default triangles so this does not show up.
         }
-        else if (face.ao && 
-                 Math.min(face.ao[0], face.ao[1], face.ao[2], face.ao[3]) !==
-                 Math.max(face.ao[0], face.ao[1], face.ao[2], face.ao[3])) {
-          // This is a 'standard' quad but with an ao gradient 
-          // Rotate the vertices so they connect the highest contrast 
-          let ao02 = Math.abs(face.ao[0] - face.ao[2]);
-          let ao13 = Math.abs(face.ao[1] - face.ao[3]);
-          if (ao02 < ao13) {
+        else if (c && 
+                  ( Math.min(c[0].r, c[1].r, c[2].r, c[3].r) !== Math.max(c[0].r, c[1].r, c[2].r, c[3].r) ||
+                    Math.min(c[0].g, c[1].g, c[2].g, c[3].g) !== Math.max(c[0].g, c[1].g, c[2].g, c[3].g) ||
+                    Math.min(c[0].b, c[1].b, c[2].b, c[3].b) !== Math.max(c[0].b, c[1].b, c[2].b, c[3].b)
+                  )
+                ) {
+          // This is a 'standard' quad but with an light gradient 
+          // Rotate the vertices so they connect the lowest contrast 
+          // This prevents blocky shadows, giving much better results for 'light direction = 1 1 1, castshadows = true'
+          let dif02 = Math.abs((c[0].r+c[0].g+c[0].b) - (c[2].r+c[2].g+c[2].b));
+          let dif13 = Math.abs((c[1].r+c[1].g+c[1].b) - (c[3].r+c[3].g+c[3].b));
+          if (dif02 > dif13) {
             face.vertices.push(face.vertices.shift());
             face.flatNormals.push(face.flatNormals.shift());
             face.smoothNormals.push(face.smoothNormals.shift());
@@ -8932,6 +10505,7 @@ class SvoxMeshGenerator {
   static generate(model) {
   
     let mesh = {
+      name: model.name,
       materials: [],
       groups: [],
       indices: [],
@@ -9008,7 +10582,7 @@ class SvoxMeshGenerator {
     
     model.determineBoundsForAllGroups();
 
-    SkewAndScaleAxisModifier.modify(model);
+    DirectionalTransformer.modify(model);
     
     NormalsCalculator.calculateNormals(model);   
     
@@ -9017,10 +10591,16 @@ class SvoxMeshGenerator {
     VertexTransformer.transformVertices(model); 
         
     model.determineBoundsForAllGroups();
-
-    LightsCalculator.calculateLights(model);
     
-    AOCalculator.calculateAmbientOcclusion(model);
+    if (LightsCalculator.shouldCalculate(model) || AOCalculator.shouldCalculate(model)) {    
+      
+      let octree = new Octree(model);
+
+      LightsCalculator.calculateLights(model, octree);
+
+      AOCalculator.calculateAmbientOcclusion(model, octree);
+      
+    }
     
     QuickAOCalculator.calculateQuickAmbientOcclusion(model);
     
@@ -9048,6 +10628,7 @@ class SvoxMeshGenerator {
     let vCount = this._determineIndices(mesh, hasColors, hasUvs, hasData);
     
     let newMesh = {
+      name: mesh.name,
       materials: mesh.materials,
       groups: mesh.groups,
       indices: new Uint32Array(mesh.indices.length),
@@ -9697,17 +11278,17 @@ class SvoxMeshGenerator {
 }
 
 // =====================================================
-// ../smoothvoxels/aframe/svoxtothreemeshconverter.js
+// ../smoothvoxels/aframe/svoxtothreejsmeshconverter.js
 // =====================================================
 
-class SvoxToThreeMeshConverter {
+class SvoxToThreejsMeshConverter {
    
   static generate(model) {
 
     let materials = [];
     
     model.materials.forEach(function(material) {
-      materials.push(SvoxToThreeMeshConverter._generatethreeMaterial(material));
+      materials.push(SvoxToThreejsMeshConverter._generatethreeMaterial(material));
     }, this);
 
     let geometry = new THREE.BufferGeometry();
@@ -9741,6 +11322,8 @@ class SvoxToThreeMeshConverter {
     if (SVOX.showNormals && THREE.VertexNormalsHelper) {
       return new THREE.VertexNormalsHelper(mesh, 0.1);
     }
+    
+    mesh.name = model.name;
     
     return mesh;
   }
@@ -9814,16 +11397,16 @@ class SvoxToThreeMeshConverter {
           material.envMap.mapping = THREE.EquirectangularReflectionMapping;
       }
       else if (property === 'matcap') {
-        material.matcap = SvoxToThreeMeshConverter._generateTexture(material.matcap.image, THREE.SRGBColorSpace);
+        material.matcap = SvoxToThreejsMeshConverter._generateTexture(material.matcap.image, THREE.SRGBColorSpace);
       }
       else if ([ 'map', 'emissiveMap', 'specularColorMap' ].includes(property)) {
-        material[property] = SvoxToThreeMeshConverter._generateTexture(material[property].image, THREE.SRGBColorSpace, 
+        material[property] = SvoxToThreejsMeshConverter._generateTexture(material[property].image, THREE.SRGBColorSpace, 
                                                                        material[property].uscale, material[property].vscale, 
                                                                        material[property].uoffset, material[property].voffset, 
                                                                        material[property].rotation);
       }
       else if (property.endsWith('Map')) {
-        material[property] = SvoxToThreeMeshConverter._generateTexture(material[property].image, THREE.LinearSRGBColorSpace, 
+        material[property] = SvoxToThreejsMeshConverter._generateTexture(material[property].image, THREE.LinearSRGBColorSpace, 
                                                                        material[property].uscale, material[property].vscale, 
                                                                        material[property].uoffset, material[property].voffset, 
                                                                        material[property].rotation);
@@ -9905,7 +11488,7 @@ class SvoxToThreeMeshConverter {
 const workerScript = `
 
 try {
-  importScripts('https://cdn.jsdelivr.net/gh/SamuelVanEgmond/Smooth-Voxels@v2.2.0/dist/smoothvoxels.min.js');
+  importScripts('https://cdn.jsdelivr.net/gh/SamuelVanEgmond/Smooth-Voxels@v2.3.0/dist/smoothvoxels.min.js');
 }
 catch {
   // For local development before the actual release 
@@ -9928,31 +11511,30 @@ onmessage = function(event) {
       }
     }
 
-    postMessage( { svoxmesh, elementId:event.data.elementId, worker:event.data.worker } , transferables);
+    postMessage( { svoxmesh, elementId:event.data.elementId, workerIndex:event.data.workerIndex } , transferables);
   }
   catch (err) {
     SVOX.logError(err);
+    err.workerIndex = event.data.workerIndex;
+    throw err;
   }
 };
 
 
 function generateModel(svoxModel, modelName) {
-  let _MISSING = "model size=9,scale=0.05,material lighting=flat,colors=B:#FF8800 C:#FF0000 A:#FFFFFF,voxels 10B7-2(2B2-3C2-2B4-C2-)2B2-3C2-2B7-11B7-B-6(7A2-)7A-B7-2B2-3C2-B-6(7A2-)7A-B2-3C2-2B2-C4-B-2(7A-C7A2C)7A-C7AC-7A-B2-C4-2B2-3C2-B3(-7A-C7AC)-7A-B2-3C2-2B2-C4-B-7A-C2(7AC-7A2C)7AC-7A-B2-C4-2B2-3C2-B-6(7A2-)7A-B2-3C2-2B7-B-6(7A2-)7A-B7-11B7-2(2B2-3C2-2B2-C4-)2B2-3C2-2B7-10B";
-  let _ERROR   = "model size=9,scale=0.05,material lighting=flat,colors=A:#FFFFFF B:#FF8800 C:#FF0000,voxels 10B7-2B-C3-C-2B2-C-C2-2B3-C3-2B2-C-C2-2B-C3-C-2B7-11B7-B-6(7A2-)7A-B7-2B-C3-C-B-7A-C7AC-2(7A2-)7A-C7AC-7A-B-C3-C-2B2-C-C2-B-7A2-2(7A-C7AC-)7A2-7A-B2-C-C2-2B3-C3-B-2(7A2-)7A-C7AC-2(7A2-)7A-B3-C3-2B2-C-C2-B-7A2-2(7A-C7AC-)7A2-7A-B2-C-C2-2B-C3-C-B-7A-C7AC-2(7A2-)7A-C7AC-7A-B-C3-C-2B7-B-6(7A2-)7A-B7-11B7-2B-C3-C-2B2-C-C2-2B3-C3-2B2-C-C2-2B-C3-C-2B7-10B";
-
   let error = undefined;
   if (!svoxModel || svoxModel.trim() === '') {
     error = { name:'ConfigError', message:'Model not found' };
-    svoxModel = _MISSING;
+    svoxModel = SVOX._MISSING;
   }
 
   let model = null;
-  try {        
+  try {              
       model = ModelReader.readFromString(svoxModel, modelName);
   }
   catch (err) {
     error = err;
-    model = ModelReader.readFromString(_ERROR);
+    model = ModelReader.readFromString(SVOX._ERROR, modelName);
   }
   
   let svoxmesh = SvoxMeshGenerator.generate(model, modelName);
@@ -9970,68 +11552,179 @@ var workerUrl = URL.createObjectURL(new Blob([workerScript], {type: 'application
 
 class WorkerPool {
 
-  // workerfile: e.g. "/smoothvoxelworker.js"
-  constructor(workerFile, resultHandler, resultCallback) {
+  // workerfile: e.g. "/smoothvoxelworker.js" 
+  constructor(workerFile) {
     this._workerFile = workerFile;
-    this._resultHandler = resultHandler;
-    this._resultCallback = resultCallback;
     this._nrOfWorkers = window.navigator.hardwareConcurrency;
-    this._workers = []; // The actual workers
-    this._free = [];    // Array of free worker indexes
-    this._tasks = [];   // Array of tasks to perform
+    this._workers = [];    // All workers
+    this._free = [];       // Indices of the free workers
+    this._todo = [];       // Tasks to perform
+    this._inProgress = []; // Tasks currently in progress in a worker
   }
 
   executeTask(task) {
-    // Create max nrOfWorkers web workers
-    if (this._workers.length < this._nrOfWorkers) {
+    return new Promise((resolve, reject) => {
+
+      if (this._free.length === 0 && this._workers.length < this._nrOfWorkers) {
+
+        let worker = new Worker(this._workerFile);
       
-      // Create a new worker and mark it as free by adding its index to the free array
-      let worker = new Worker(this._workerFile);
+        worker.onmessage = (event) => {
+  
+          let done = this._inProgress[event.data.workerIndex];
+          this._inProgress[event.workerIndex] = undefined;
+          
+          this._free.push(event.data.workerIndex);
+          this._processNextTask();
+
+          done.resolve(event.data);
+        };
+
+        worker.onerror = (err) => {
+          
+          let done = this._inProgress[event.workerIndex];
+          this._inProgress[event.workerIndex] = undefined;
+
+          this._free.push(event.data.workerIndex);
+          this._processNextTask();
+          
+          done.reject(err);
+        };
       
-      // On message handler
-      let _this = this;
-      worker.onmessage = function(task) {
-        
-          // Mark the worker as free again, process the next task and process the result
-          _this._free.push(event.data.worker);        
-          _this._processNextTask();
-          _this._resultCallback.apply(_this._resultHandler, [ event.data ]);
-      };
-      
-      this._free.push(this._workers.length);
-      this._workers.push(worker);
-    }
-    
-    this._tasks.push(task);
-    
-    this._processNextTask();    
+        this._workers.push(worker);
+        this._free.push(this._workers.length-1);
+      }
+
+      // Push the task and the resolve and reject functions for this task on the todo list to process
+      this._todo.push({ task, resolve, reject });
+      this._processNextTask();
+    });     
   }
   
   _processNextTask() {
-    if (this._tasks.length > 0 && this._free.length > 0) {
-      let task = this._tasks.shift();
-      task.worker = this._free.shift();
-      let worker = this._workers[task.worker];
+    if (this._todo.length > 0 && this._free.length > 0) {
+      let todo = this._todo.shift();
+      let task = todo.task;
+      let workerIndex = this._free.shift();
+      let worker = this._workers[workerIndex];
+      todo.workerIndex = workerIndex;
+      task.workerIndex = workerIndex; 
+      this._inProgress[workerIndex] = todo;
       worker.postMessage(task);
     }    
   }
-
-};
+}
 
 // =====================================================
 // ../smoothvoxels/aframe/smoothvoxels.js
 // =====================================================
 
+/**
+ * Smooth Voxels handling for Three.js
+ */
+class SmoothVoxels {  
+
+   /**
+   * Creates a mesh, on request using a worker.
+   * Returns a promise with the meash al result.
+   */
+  static createMesh(modelString, modelName = "<unknown>", useWorker = false) { 
+    let error = false;
+    
+    modelString = modelString?.trim();
+    
+    if (!modelString || modelString.trim() === '') {
+      SVOX.logError({ name:'ConfigError', message:`Model ${modelName} not found`});
+      modelString = SVOX._MISSING;
+      error = true;
+      useWorker = false;
+    }
+
+    if (!useWorker) {
+      return this._generateModel(modelString, modelName, error);   
+    }
+    else {
+      return this._generateModelInWorker(modelString, modelName);
+    }
+  };
+  
+  static _generateModel(modelString, modelName, error) {
+    return new Promise((resolve, reject) => {  
+      let t0 = performance.now();
+
+      let model;
+      try {        
+          model = ModelReader.readFromString(modelString, modelName);
+      }
+      catch (ex) {
+        SVOX.logError(ex);
+        model = ModelReader.readFromString(SVOX._ERROR, modelName);
+        error = true;
+      }
+
+      try {        
+        let svoxmesh = SvoxMeshGenerator.generate(model);
+        let mesh = SvoxToThreejsMeshConverter.generate(svoxmesh);
+
+        // Log stats
+        let t1 = performance.now();
+        let statsText = `Time:${((t1 - t0)/1000).toFixed(3)}s.  Voxels:${model.voxels.count.toLocaleString()}  Verts:${(svoxmesh.positions.length / 3).toLocaleString()}  Faces:${(svoxmesh.indices.length / 3).toLocaleString()}  Materials:${mesh.material.length}`;
+        //console.log(`SVOX ${this.data.model}:  ${statsText}`);     
+        let statsEl = document.getElementById('svoxstats');
+        if (statsEl && !error)
+          statsEl.innerHTML = `Last render: ` + statsText; 
+        
+        resolve(mesh);
+      }
+      catch (error) {
+        SVOX.logError(error);
+        reject(error);
+      }    
+    });       
+  };
+  
+  static _generateModelInWorker(modelString, modelName) {
+    let task =  { svoxModel: modelString, modelName };    
+    
+    if (!SVOX.WORKERPOOL) {
+      SVOX.WORKERPOOL = new WorkerPool(workerUrl);
+    }
+    
+    return new Promise((resolve, reject) => {
+      SVOX.WORKERPOOL.executeTask(task)
+        .then(data => {
+          if (data.svoxmesh.error) {
+            SVOX.logError(data.svoxmesh.error)
+            reject(data.svoxmesh.error);
+          }
+          else {
+            let mesh = SvoxToThreejsMeshConverter.generate(data.svoxmesh);
+            resolve(mesh);         
+          }
+        })
+        .catch(error => {
+          SVOX.logError(error)
+          reject(error);
+        });
+    });
+  } 
+}
+  
+SVOX.WORKERPOOL = null;
+
+// =====================================================
+// ../smoothvoxels/aframe/aframecomponent.js
+// =====================================================
+
 // We are combining this file with others in the minified version that will be used also in the worker.
 // Do not register the svox component inside the worker
-if("undefined"!==typeof window) {
+if(typeof window!=='undefined') {
 
 if (typeof AFRAME === 'undefined') {
   throw new Error('Component attempted to register before AFRAME was available.');
 }
 
-SVOX.WORKERPOOL = null;
-
+var elId = 0;
 /**
  * Smooth Voxels component for A-Frame.
  */
@@ -10045,37 +11738,7 @@ AFRAME.registerComponent('svox', {
    * Set if component needs multiple instancing.
    */
   multiple: false,
-
-  _ERROR: `model size=9,scale=0.05
-light intensity=0.8
-light direction=1 1 0,intensity=0.4
-material type=basic,lighting=flat,colors=A:#FFF B:#F80,ao=0.1 0.5
-group id=cross,prefab=true,scale= 1 0.5 1
-material type=basic,lighting=flat,colors=C:#F00,group=cross
-group id=nx, clone=cross,rotation=0 45 90,position=-4 0 0
-group id=px, clone=cross,rotation=0 45 90,position=4 0 0
-group id=ny, clone=cross,rotation=0 45 0,position=0 -4 0
-group id=py, clone=cross,rotation=0 45 0,position=0 4 0
-group id=nz, clone=cross,rotation=90 0 45,position=0 0 -4
-group id=pz, clone=cross,rotation=90 0 45,position=0 0 4
-voxels 10B6(7-2B)7-11B7-B-6(7A2-)7A-B7-2(2B7-B-6(7A2-)7A-B3-C3-)2B7-B-6(7A2-)7A-B-5C-2(2B7-B-6(7A2-)7A-B3-C3-)2B7-B-6(7A2-)7A-B7-11B6(7-2B)7-10B`,
-
-  _MISSING: `model size=9 10 9,scale=0.05
-light intensity=0.8
-light direction=1 1 0,intensity=0.4
-material type=basic,lighting=flat,colors=A:#FFF B:#F80,ao=0.1 0.5
-group id=questionmark,prefab=true,scale=0.5 0.5 0.6
-material type=basic,lighting=both,colors=C:#F00,deform=1,clamp=y,group=questionmark
-group id=nx,clone=questionmark,rotation=0 -90 90,position=-4 0 0
-group id=px,clone=questionmark,rotation=0 90 -90,position=4 0 0
-group id=ny,clone=questionmark,rotation=180 0 0,position=0 -4 0
-group id=py,clone=questionmark,rotation=0 0 0,position=0 4 0
-group id=nz,clone=questionmark,rotation=90 180 0,position=0 0 -4
-group id=pz,clone=questionmark,rotation=90 0 0,position=0 0 4
-voxels 10B6(7-2B)7-10B2-4C3-2(B7-B-6(7A2-)7A-B7-B-2(2C2-))B7-B-6(7A2-)7A-B7-B4-2C3-2(B7-B-6(7A2-)7A-B7-B3-2C4-)B7-B-6(7A2-)7A-B7-B9-B7-B-6(7A2-)7A-B7-B3-2C4-10B6(7-2B)7-10B3-2C4-`,
-  
-  _workerPool: null,
-  
+   
   /**
    * Called once when component is attached. Generally for initial setup.
    */
@@ -10083,89 +11746,15 @@ voxels 10B6(7-2B)7-10B2-4C3-2(B7-B-6(7A2-)7A-B7-B-2(2C2-))B7-B-6(7A2-)7A-B7-B4-2
     let el = this.el;
     let data = this.data;
     let useWorker = data.worker;
-    let error = false;
     
     let modelName = data.model;
     let modelString = SVOX.models[modelName];
-    if (!modelString) {
-      SVOX.logError({ name:'ConfigError', message:`(${modelName}) Model ${modelName} not found`});
-      modelString = this._MISSING;
-      modelName ='_MISSING';
-      error = true;
-      useWorker = false;
-    }
-
-    if (!useWorker) {
-      this._generateModel(modelString, modelName, el, error);
-    }
-    else {
-      this._generateModelInWorker(modelString, modelName, el);
-    }
-  },
-  
-  _generateModel: function(modelString, modelName, el, error) {
-    let t0 = performance.now();
-
-    let model;
-    try {        
-        model = ModelReader.readFromString(modelString, modelName);
-    }
-    catch (ex) {
-      SVOX.logError(ex);
-      model = ModelReader.readFromString(this._ERROR, '_ERROR');
-      error = true;
-    }
     
-    try {        
-        //let meshGenerator = new MeshGenerator();
-        //this.mesh = meshGenerator.generate(model);
-    
-        let svoxmesh = SvoxMeshGenerator.generate(model);
-        this.mesh = SvoxToThreeMeshConverter.generate(svoxmesh);
-      
-        // Log stats
-        let t1 = performance.now();
-        let statsText = `Voxels: ${model.voxels.count}  Time: ${Math.round(t1 - t0)/1000}s. Verts:${(svoxmesh.positions.length / 3).toLocaleString()} Faces:${(svoxmesh.indices.length / 3).toLocaleString()} Materials:${this.mesh.material.length}`;
-        //console.log(`SVOX ${this.data.model}:  ${statsText}`);     
-        let statsEl = document.getElementById('svoxstats');
-        if (statsEl && !error)
-          statsEl.innerHTML = `Last render: ` + statsText; 
-      
-        el.setObject3D('mesh', this.mesh);
-    }
-    catch (error) {
-      SVOX.logError(error);
-    }    
-  },
-  
-  _generateModelInWorker: function(modelString, modelName, el) {
-    // Make sure the element has an Id, create a task in the task array and process it
-    if (!el.id)
-      el.id = new Date().valueOf().toString(36) + Math.random().toString(36).substr(2);
-    let task =  { svoxModel: modelString, modelName, elementId:el.id };    
-    
-    if (!SVOX.WORKERPOOL) {
-      SVOX.WORKERPOOL = new WorkerPool(workerUrl, this, this._processResult);
-    }
-    SVOX.WORKERPOOL.executeTask(task);
-  },
-  
-  _processResult: function(data) {
-    if (data.svoxmesh.error) {
-      SVOX.logError(data.svoxmesh.error)
-    }
-    else {
-      let mesh = SvoxToThreeMeshConverter.generate(data.svoxmesh);
-      let el = document.querySelector('#' + data.elementId);
-
-      el.setObject3D('mesh', mesh);          
-    }
-  },
-  
-  _toSharedArrayBuffer(floatArray) {
-    let buffer = new Float32Array(new ArrayBuffer(floatArray.length * 4));
-    buffer.set(floatArray, 0);
-    return buffer;
+    SmoothVoxels.createMesh(modelString, modelName, useWorker).then(mesh => {
+      el.setObject3D('mesh', mesh);      
+    }).catch(error => {
+        // The error is already logged
+    });
   },
   
   /**
