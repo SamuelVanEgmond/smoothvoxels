@@ -18,7 +18,38 @@ Or just check [the cheat sheet](https://smoothvoxels.glitch.me/cheatsheet.html).
 
 But the best way to see what you can do is browsing and changing the examples on [The Smooth Voxel Playground](https://smoothvoxels.glitch.me/playground.html).
 
-Note that this project lives at [glitch.com](https://www.glitch.com), but GitHub contains the linkable distribution. 
+Note that this project lives at [glitch.com](https://www.glitch.com), GitHub contains the distribution, which can be linked from jsDelivr as shown below.
+
+Refer to the [Smooth Voxels Examples](https://smoothvoxels-examples.glitch.me/) for full examples in A-Frame and Three.js.
+
+**Including Smooth Voxels into A-Frame**
+~~~~
+<!-- Include the A-Frame and Smooth Voxels scripts -->
+<script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/SamuelVanEgmond/Smooth-Voxels@v2.3.0/dist/smoothvoxels.min.js"></script>
+~~~~
+
+**Including Smooth Voxels into Three.js**
+~~~~
+<script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.min.js"
+    }
+  }
+</script>
+
+<!-- Include the Smooth Voxels script -->
+<script src="https://cdn.jsdelivr.net/gh/SamuelVanEgmond/Smooth-Voxels@v2.3.0/dist/smoothvoxels.threejs.min.js"></script>
+
+<script type="module">
+  import * as THREE from 'three';
+
+  // Ensure THREE is available for Smooth Voxels
+  window.THREE = THREE;
+
+  ...
+~~~~
 
 You can find [the release notes here](https://smoothvoxels.glitch.me/#ReleaseNotes).
 
