@@ -25,8 +25,8 @@ Refer to the [Smooth Voxels Examples](https://smoothvoxels-examples.glitch.me/) 
 **Including Smooth Voxels into A-Frame**
 ~~~~
 <!-- Include the A-Frame and Smooth Voxels scripts -->
-<script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-<script src="https://cdn.jsdelivr.net/gh/SamuelVanEgmond/Smooth-Voxels@v2.3.0/dist/smoothvoxels.min.js"></script>
+<script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/SamuelVanEgmond/Smooth-Voxels@v2.4.0/dist/smoothvoxels.min.js"></script>
 ~~~~
 
 **Including Smooth Voxels into Three.js**
@@ -34,13 +34,13 @@ Refer to the [Smooth Voxels Examples](https://smoothvoxels-examples.glitch.me/) 
 <script type="importmap">
   {
     "imports": {
-      "three": "https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.min.js"
+      "three": "https://cdn.jsdelivr.net/npm/three@0.164.0/build/three.module.min.js"
     }
   }
 </script>
 
 <!-- Include the Smooth Voxels script -->
-<script src="https://cdn.jsdelivr.net/gh/SamuelVanEgmond/Smooth-Voxels@v2.3.0/dist/smoothvoxels.three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/SamuelVanEgmond/Smooth-Voxels@v2.4.0/dist/smoothvoxels.three.min.js"></script>
 
 <script type="module">
   import * as THREE from 'three';
