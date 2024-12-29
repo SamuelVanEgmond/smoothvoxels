@@ -469,7 +469,7 @@ class BoundingBox {
 // class Voxel
 // =====================================================
 
-/* Note, voxels only supports hexadecimal colors like #FFF or #FFFFFF*/
+/* Note, voxels only supports hexadecimal colors like #FFF or #FFFFFF */
 class Voxel {
   
   constructor(color, group) {
@@ -490,6 +490,9 @@ class Voxel {
 // =====================================================
 // class VoxelMatrix
 // =====================================================
+
+// I rewrote this class using a simple Map as storage instead of the chunked arrays.
+// This looked much cleaner and seemed equally fast. But some models became much slower.
 
 class VoxelMatrix {
   
@@ -514,7 +517,7 @@ class VoxelMatrix {
   // Reset is used when reloading .vox files
   reset() {
     this.forEach(function(voxel) {
-      voxel.reset;
+      voxel.dispose();
     }, this, true);
     this.bounds.reset();
     this._groups = {};
@@ -1171,7 +1174,7 @@ class Material {
   
   constructor(baseMaterial, settings) {
     this._settings = settings;
-    this._baseMaterial = baseMaterial;  
+    this._baseMaterial = baseMaterial;
 
     let colors = this._settings.colors;
     this._settings.colors = [];
@@ -1203,7 +1206,10 @@ class Material {
   get wireframe()    { return this._settings.wireframe; }
   get simplify()     { return this._settings.simplify; }
   get side()         { return this._settings.side; }
-    
+
+  get mapTransform() { return this._settings.mapTransform; }
+  get mapProject()   { return this._settings.mapProject; }
+  
   get deform()       { return this._settings.deform; }
   get warp()         { return this._settings.warp; }
   get scatter()      { return this._settings.scatter; }
@@ -1263,8 +1269,13 @@ class MaterialList {
       
       let defMaterial = MaterialReader.read(settings, modelName, noColors);
       let defBase     = defMaterial.base;
-      let defBaseId   = defMaterial.baseId;
-
+      
+      if (Object.keys(settings).some(k => k.startsWith('atlas'))) {
+        // In case of an atlas, map transform is incorporated in the uv's and not set in the material
+        // So delete mapTransform to prevent an difference in base ID which could result in an unnecessary extra material
+        delete defBase.mapTransform;
+      }
+      
       let baseMaterial = new BaseMaterial(defBase);
       let baseId = baseMaterial.baseId;
       let existingBase = this.baseMaterials.find(m => m.baseId === baseId);
@@ -1421,49 +1432,49 @@ class Model {
   */
   _createModelGroup() {
     this.groups.createGroup( { id:'*', 
-                                scale: this.scale, 
-                                shape: this.shape,
-                                scaleYX: this.scaleYX,                           
-                                scaleZX: this.scaleZX,                           
-                                scaleXY: this.scaleXY,                           
-                                scaleZY: this.scaleZY,                           
-                                scaleXZ: this.scaleXZ,                           
-                                scaleYZ: this.scaleYZ,     
-                                smoothScaleYX: this.smoothScaleYX,                           
-                                smoothScaleZX: this.smoothScaleZX,                           
-                                smoothScaleXY: this.smoothScaleXY,                           
-                                smoothScaleZY: this.smoothScaleZY,                           
-                                smoothScaleXZ: this.smoothScaleXZ,                           
-                                smoothScaleYZ: this.smoothScaleYZ,     
-                                rotateX: this.rotateX,
-                                rotateY: this.rotateY,
-                                rotateZ: this.rotateZ,
-                                smoothRotateX: this.smoothRotateX,
-                                smoothRotateY: this.smoothRotateY,
-                                smoothRotateZ: this.smoothRotateZ,
-                                translateYX: this.translateYX,                           
-                                translateZX: this.translateZX,                           
-                                translateXY: this.translateXY,                           
-                                translateZY: this.translateZY,                           
-                                translateXZ: this.translateXZ,                           
-                                translateYZ: this.translateYZ,
-                                smoothTranslateYX: this.smoothTranslateYX,                           
-                                smoothTranslateZX: this.smoothTranslateZX,                           
-                                smoothTranslateXY: this.smoothTranslateXY,                           
-                                smoothTranslateZY: this.smoothTranslateZY,                           
-                                smoothTranslateXZ: this.smoothTranslateXZ,                           
-                                smoothTranslateYZ: this.smoothTranslateYZ,
-                                bendYX: this.bendYX,                           
-                                bendZX: this.bendZX,                           
-                                bendXY: this.bendXY,                           
-                                bendZY: this.bendZY,                           
-                                bendXZ: this.bendXZ,                           
-                                bendYZ: this.bendYZ,                                    
-                                origin: this.origin, 
-                                resize: this.resize, 
-                                rotation: this.rotation, 
-                                position: this.position
-                              } );       
+                               scale: this.scale, 
+                               shape: this.shape,
+                               scaleYX: this.scaleYX,                           
+                               scaleZX: this.scaleZX,                           
+                               scaleXY: this.scaleXY,                           
+                               scaleZY: this.scaleZY,                           
+                               scaleXZ: this.scaleXZ,                           
+                               scaleYZ: this.scaleYZ,     
+                               smoothScaleYX: this.smoothScaleYX,                           
+                               smoothScaleZX: this.smoothScaleZX,                           
+                               smoothScaleXY: this.smoothScaleXY,                           
+                               smoothScaleZY: this.smoothScaleZY,                           
+                               smoothScaleXZ: this.smoothScaleXZ,                           
+                               smoothScaleYZ: this.smoothScaleYZ,     
+                               rotateX: this.rotateX,
+                               rotateY: this.rotateY,
+                               rotateZ: this.rotateZ,
+                               smoothRotateX: this.smoothRotateX,
+                               smoothRotateY: this.smoothRotateY,
+                               smoothRotateZ: this.smoothRotateZ,
+                               translateYX: this.translateYX,                           
+                               translateZX: this.translateZX,                           
+                               translateXY: this.translateXY,                           
+                               translateZY: this.translateZY,                           
+                               translateXZ: this.translateXZ,                           
+                               translateYZ: this.translateYZ,
+                               smoothTranslateYX: this.smoothTranslateYX,                           
+                               smoothTranslateZX: this.smoothTranslateZX,                           
+                               smoothTranslateXY: this.smoothTranslateXY,                           
+                               smoothTranslateZY: this.smoothTranslateZY,                           
+                               smoothTranslateXZ: this.smoothTranslateXZ,                           
+                               smoothTranslateYZ: this.smoothTranslateYZ,
+                               bendYX: this.bendYX,                           
+                               bendZX: this.bendZX,                           
+                               bendXY: this.bendXY,                           
+                               bendZY: this.bendZY,                           
+                               bendXZ: this.bendXZ,                           
+                               bendYZ: this.bendYZ,                                    
+                               origin: this.origin, 
+                               resize: this.resize, 
+                               rotation: this.rotation, 
+                               position: this.position
+                            } );       
   }
   
   prepareForWrite(countColors = true) {
@@ -1734,13 +1745,13 @@ class PropertyParser {
   
     /**
      * Parses and checks a name string
-     * @param {string} name The name of the field
+     * @param {string} de The definition of the field
      * @param {string} defaultValue The default value for the field
      * @param {string} value The string value of the field
      * @returns {string} The name if it is valid
      * @throws {SyntaxError} Invalid name
      */
-    static parseNameNew(def, value) {
+    static parseName(def, value) {
       if (!value) {
         return def.defaultValue;
       }
@@ -1760,13 +1771,13 @@ class PropertyParser {
   
     /**
      * Parses and checks a boolean string, only true and false are allowed.
-     * @param {string} name The name of the field
+     * @param {string} de The definition of the field
      * @param {string} defaultValue The default value for an optional field
      * @param {string} value The string value of the field
      * @returns {string} A boolean if the value is true or false
      * @throws {SyntaxError} Invalid name
      */
-    static parseBooleanNew(def, value) {
+    static parseBoolean(def, value) {
       if (typeof value === 'boolean') return value;
       
       let parseValue = value || `${def.defaultValue}`;
@@ -1782,14 +1793,14 @@ class PropertyParser {
   
     /**
      * Parses an enum value (string) and checks if it is one of the allowed values.
-     * @param {string} name The name of the field
+     * @param {string} de The definition of the field
      * @param {array} allowedValues An array containing the allowed values
      * @param {string} defaultValue The default value for an optional field
      * @param {string} value The string value of the field
      * @returns {string} The value if it is one of the allowed values
      * @throws {SyntaxError} Invalid value for the allowed values
      */
-    static parseEnumNew(def, value) { 
+    static parseEnum(def, value) { 
       let parseValue = value || def.defaultValue;
       if (parseValue === undefined)
         return undefined;
@@ -1804,13 +1815,13 @@ class PropertyParser {
   
     /**
      * Parses and checks a color string
-     * @param {string} name The name of the field
+     * @param {string} de The definition of the field
      * @param {string} defaultValue The default value for an optional field
      * @param {string} value The string value of the field
      * @returns {Color} A color if the value is valid
      * @throws {SyntaxError} Invalid value
      */
-    static parseColorNew(def, value) { 
+    static parseColor(def, value) { 
       let parseValue = value || def.defaultValue;
       try {
         if (parseValue)
@@ -1828,12 +1839,12 @@ class PropertyParser {
   
     /**
      * Parses and checks a color id
-     * @param {string} name The name of the field
+     * @param {string} de The definition of the field
      * @param {string} value The string value of the field
      * @returns {ColorId} A color Id if the value is valid
      * @throws {SyntaxError} Invalid value
      */
-    static parseColorIdNew(def, value) { 
+    static parseColorId(def, value) { 
       if (value) {
         if (/^[A-Z][a-z]*$/.test(value)) {
           return value;
@@ -1851,13 +1862,13 @@ class PropertyParser {
   
     /**
      * Parses a planar point expression, i.e. model origin
-     * @param {string} name The name of the field
+     * @param {string} de The definition of the field
      * @param {string} defaultValue The default planar expression for an optional field
      * @param {string} value The string value of the field in the form -x >x x <x +x -y >y y <y +y -z >z z <z +z
      * @returns {Color} A planar struct if the value is valid
      * @throws {SyntaxError} Invalid value
      */
-    static parsePlanarPointNew(def, value) {
+    static parsePlanarPoint(def, value) {
       let planar = Planar.parse(value || def.defaultValue);
       
       if (planar) {      
@@ -1877,13 +1888,13 @@ class PropertyParser {
   
     /**
      * Parses a planar planes expression, i.e. clamp, flatten, skip.
-     * @param {string} name The name of the field
+     * @param {string} de The definition of the field
      * @param {string} defaultValue The default planar expression for an optional field
      * @param {string} value The string value of the field in the form -x >x x <x +x -y >y y <y +y -z >z z <z +z
      * @returns {Color} A planar struct if the value is valid
      * @throws {SyntaxError} Invalid value
      */
-    static parsePlanarPlanesNew(def, value) {
+    static parsePlanarPlanes(def, value) {
       let planar = Planar.parse(value || def.defaultValue);
 
       if (planar) {
@@ -1897,13 +1908,13 @@ class PropertyParser {
   
     /**
      * Parses a planar sides expression, i.e. tile or aosides
-     * @param {string} name The name of the field
+     * @param {string} de The definition of the field
      * @param {string} defaultValue The default planar expression for an optional field
      * @param {string} value The string value of the field in the form -x x +x -y y +y -z z +z
      * @returns {Color} A planar struct if the value is valid
      * @throws {SyntaxError} Invalid value
      */
-    static parsePlanarSidesNew(def, value) {
+    static parsePlanarSides(def, value) {
       let planar = Planar.parse(value || def.defaultValue);
       
       if (planar) {
@@ -1924,13 +1935,13 @@ class PropertyParser {
   
     /**
      * Parses and checks a float string
-     * @param {string} name The name of the field
+     * @param {string} de The definition of the field
      * @param {string} defaultValue The default value for an optional field
      * @param {string} value The string value of the field
      * @returns {string} A float if the value is valid
      * @throws {SyntaxError} Invalid value
      */
-    static parseFloatNew(def, value) {
+    static parseFloat(def, value) {
       try {
         return PropertyParser._parseFloatPart(value, def.defaultValue);
       }
@@ -1944,7 +1955,7 @@ class PropertyParser {
    
     /**
      * Parses an 'x y' string into an object with float x y values
-     * @param {string} name The name of the field
+     * @param {string} de The definition of the field
      * @param {string} defaultX The default value for the x value for an optional field
      * @param {string} defaultY The default value for the y value for an optional field or when the second float value is omitted
      * @param {boolean} allowUniform When true one value is allowed to fill x, y and z
@@ -1952,7 +1963,7 @@ class PropertyParser {
      * @returns {string} A struct { float1, float2 }
      * @throws {SyntaxError} Invalid value
      */
-    static parseXYFloatNew(def, value) {
+    static parseXYFloat(def, value) {
       try {
         let xy = undefined;
         if (typeof value === 'object') {
@@ -2027,7 +2038,7 @@ class PropertyParser {
   
     /**
      * Parses an 'x y z' string into an object with integer x y z values
-     * @param {string} name The name of the field
+     * @param {string} de The definition of the field
      * @param {boolean} allowUniform When true one value is allowed to fill x, y and z
      * @param {string} defaultX The default value for the x value for an optional field
      * @param {string} defaultY The default value for the y value for an optional field or when the second value is omitted
@@ -2035,8 +2046,8 @@ class PropertyParser {
      * @param {string} value The string value of the field
      * @returns {object} An { x, y, z } object with integers 
      */
-    static parseXYZIntNew(def, value) {
-      let xyz = PropertyParser.parseXYZFloatNew(def, value);
+    static parseXYZInt(def, value) {
+      let xyz = PropertyParser.parseXYZFloat(def, value);
       
       if (xyz) {
         if (xyz.x !== Math.trunc(xyz.x) || xyz.y !== Math.trunc(xyz.y) || xyz.z !== Math.trunc(xyz.z)) {
@@ -2052,7 +2063,7 @@ class PropertyParser {
   
     /**
      * Parses an 'x y z' string into an object with float x y z values
-     * @param {string} name The name of the field
+     * @param {string} de The definition of the field
      * @param {boolean} allowUniform When true one value is allowed to fill x, y and z
      * @param {string} defaultX The default value for the x value for an optional field
      * @param {string} defaultY The default value for the y value for an optional field or when the second value is omitted
@@ -2060,7 +2071,7 @@ class PropertyParser {
      * @param {string} value The string value of the field
      * @returns {object} An { x, y, z } object with floats 
      */
-    static parseXYZFloatNew(def, value) {
+    static parseXYZFloat(def, value) {
       try {
         let xyz = undefined;
         if (typeof value === 'object') {
@@ -2143,11 +2154,11 @@ class PropertyParser {
   
     /**
      * Parses an 'float0, float1, ..., floatn' string into an array with float values
-     * @param {string} name The name of the field
+     * @param {string} de The definition of the field
      * @param {string} value The string value of the field
      * @returns {array} An array with floats 
      */
-    static parseFloatArrayNew(def, value) {
+    static parseFloatArray(def, value) {
       try {
         if (value === undefined || value === null) {
           return undefined;
@@ -2221,24 +2232,24 @@ class PropertyParser {
   
     /**
      * Parses a string
-     * @param {string} name The name of the field
+     * @param {string} de The definition of the field
      * @param {string} value The string value of the field
      * @returns {string} The content of the string
      */
     static parseString(name, value) {
       return value;
     }  
-    static parseStringNew(def, value) {
+    static parseString(def, value) {
       return value;
     }  
   
     /**
      * Parses a 'color distance íntensity angle' string to an ao object
-     * @param {string} name The name of the field
+     * @param {string} de The definition of the field
      * @param {string/object} value The ao value as a string '#000 2 1 70' (color, íntensity and angle optional), or object { color:'#000', maxDistance:2, íntensity:1, angle:70 }, or undefined
      * returns {object} { color, maxDistance, íntensity, angle } or undefined
      */
-    static parseAoNew(def, value) {
+    static parseAo(def, value) {
       try {
         let ao = undefined;
         if (typeof value === 'object') {
@@ -2266,7 +2277,7 @@ class PropertyParser {
             };
           }          
 
-          let color = PropertyParser.parseColorNew(def.name, parts[0] ?? '#000');
+          let color = PropertyParser.parseColor(def.name, parts[0] ?? '#000');
           let maxDistance = Math.abs(PropertyParser._parseFloatPart(parts[1], 1.0));
           let intensity = PropertyParser._parseFloatPart(parts[2], 1);
           let angle = PropertyParser._parseFloatPart(parts[3], 70);
@@ -2286,11 +2297,11 @@ class PropertyParser {
  
     /**
      * Parses a 'color intensity' string to a quickAo object
-     * @param {string} name The name of the field
+     * @param {string} de The definition of the field
      * @param {string/object} value The ao value as a string '#000 1' (color, intensity is optional), or object { color:'#000', intensity:1 }, or undefined
      * returns {object} { color, intensity } or undefined
      */
-    static parseQuickAoNew(def, value) {
+    static parseQuickAo(def, value) {
       try {
         if (typeof value === 'object') {
           let color = value.color ?? '#000';
@@ -2313,7 +2324,7 @@ class PropertyParser {
             };
           }                   
 
-          let color = PropertyParser.parseColorNew(def.name, parts[0] ?? '#000');
+          let color = PropertyParser.parseColor(def.name, parts[0] ?? '#000');
           let intensity = PropertyParser._parseFloatPart(parts[1], 1);
 
           return { color, intensity };
@@ -2329,12 +2340,12 @@ class PropertyParser {
   
     /**
      * Parses a scale string to a scale object
-     * @param {string} name The name of the field
+     * @param {string} de The definition of the field
      * @param {string/object} value The scale value as a string '1 1 1', object { x:1, y:1, z:1 }, number or undefined
      * returns {object} { x, y, z }
      */
-    static parseScaleNew(def, value) {
-      let scale = PropertyParser.parseXYZFloatNew(def, value);
+    static parseScale(def, value) {
+      let scale = PropertyParser.parseXYZFloat(def, value);
       
       if (scale && (scale.x === 0 || scale.y === 0 || scale.z === 0)) {
         throw {
@@ -2348,11 +2359,11 @@ class PropertyParser {
 
     /**
      * Parses a 'count strength damping' string to a deform object
-     * @param {string} name The name of the field
+     * @param {string} de The definition of the field
      * @param {string/object} value The deform value as a string '2 1 1', object { count:2, strength:1, damping:1 }, or undefined
      * returns {object} { count, strength, damping }
      */
-    static parseDeformNew(def, value) {
+    static parseDeform(def, value) {
       let deform = undefined;
       if (typeof value === 'object') {
         let count = !Number.isFinite(value.count) ? 1.0 : value.strength;
@@ -2365,21 +2376,20 @@ class PropertyParser {
       }
       else if (typeof value === 'string') {
         let parts = value.trim().replace(/\s+/g, ' ').split(' ');
-        let values = PropertyParser.parseXYZFloatNew(def, `${parts[0]??0} ${parts[1]??1} ${parts[2]??1}`);
+        let values = PropertyParser.parseXYZFloat(def, `${parts[0]??0} ${parts[1]??1} ${parts[2]??1}`);
         deform = { count:Math.abs(Math.round(values.x)), strength:values.y, damping:values.z };
       }
       
       return deform;
     }  
 
-  
     /**
      * Parses a 'amplitude frequency' string to a warp object
-     * @param {string} name The name of the field
+     * @param {string} de The definition of the field
      * @param {string} value The warp data, or undefined
      * returns {object} { amplitude, frequency } or undefined
      */
-    static parseWarpNew(def, value) {
+    static parseWarp(def, value) {
       let warp = undefined;
 
       if (typeof value === 'object') {
@@ -2429,7 +2439,7 @@ class PropertyParser {
      * NOTE: Since the color may be defined in a material which is parsed later, 
      *       we'll resolve the colorID later to add the color.
      */
-    static parseShellNew(def, value) {
+    static parseShell(def, value) {
       let shell = undefined;
       let error = false;
       if (Array.isArray(value)) {
@@ -2491,7 +2501,7 @@ class PropertyParser {
      * @throws Syntax error in case the vertex data is not correct (i.e. it must be [<name> <float>+]+ )
      */
     // TODO: ALLOW FOR DIRECT INPUT OF AN ARRAY OF { name, values } OBJECTS, SIMILAR TO ABOVE FUNCTIONS
-    static parseDataNew(def, value) {
+    static parseData(def, value) {
       try {
         if (value) {
           let data = [];
@@ -2535,12 +2545,12 @@ class PropertyParser {
   
     /**
      * Parses an 'uscale vscale uoffset voffset rotation' string with floats into an object with these values
-     * @param {string} name The name of the field
+     * @param {string} de The definition of the field
      * @param {string} value The string value of the field
      * @returns {object} An { uscale, vscale, uoffset, voffset, rotation } object with floats 
      */
     // TODO: ALLOW FOR DIRECT INPUT OF A MAPTRANSFORM OBJECT, SIMILAR TO ABOVE FUNCTIONS
-    static parseMapTransformNew(def, value) {
+    static parseMapTransform(def, value) {
       try {
         let parseValue = value || '-1 -1 0 0 0';      
         let values = parseValue.split(/\s+/);
@@ -2566,12 +2576,58 @@ class PropertyParser {
     } 
   
     /**
+     * Parses an atlas definition grixx gridy cellx celly (cell 0 0 is bottom left)
+     * @param {string} de The definition of the field
+     * @param {string} value The atlas data, or undefined
+     * returns {object} { gridx, gridy, cellx, celly }
+     */
+    static parseAtlas(def, value) {
+      let atlas = undefined;
+      let error = false;
+
+      if (typeof value === 'object') {
+        let gridX = Number.isFinite(value.gridX) ? value.gridX : 8;
+        let gridY = Number.isFinite(value.gridY) ? value.gridY : 8;
+        let cellX = Number.isFinite(value.cellX) ? value.cellX : 0;
+        let cellY = Number.isFinite(value.cellY) ? value.cellY : 0;
+        atlas = { gridX, gridY, cellX, cellY };
+      }
+      else if (typeof value === 'string') {
+        let stringValues = value.split(/\s+/);
+        
+        if (stringValues.length === 4) {
+          let gridX  = PropertyParser._parseFloatPart(stringValues[0], 8);
+          let gridY  = PropertyParser._parseFloatPart(stringValues[1], 8);
+          let cellX  = PropertyParser._parseFloatPart(stringValues[2], 0);
+          let cellY  = PropertyParser._parseFloatPart(stringValues[3], 0);
+          atlas = { gridX, gridY, cellX, cellY };
+        }
+        else {
+          error = true;
+        }
+      }
+      
+      if (atlas) {
+        error = error || atlas.gridX !== Math.trunc(atlas.gridX) || atlas.gridY !== Math.trunc(atlas.gridY);
+      }
+      
+      if (error) {
+        throw {
+          name: 'SyntaxError',
+          message: `'${def.name}' must have 4 values (gridx gridy cellx celly) where cell 0 0 is bottom left, and gridx and gridy must be integers.`
+        };
+      }      
+
+      return atlas;
+    }  
+  
+    /**
      * Parses an 'A:B C:E' string with swapped colors into an array of { from, to } objects
-     * @param {string} name The name of the field
+     * @param {string} de The definition of the field
      * @param {string} value The string value of the field
      * @returns {array} An array with { from, to } objects 
      */
-    static parseSwapNew(def, value) {
+    static parseSwap(def, value) {
       if (!value) return undefined;
 
       if (Array.isArray(value)) {
@@ -2605,12 +2661,12 @@ class PropertyParser {
   
     /**
      * Parses an string with color definitions, e.g. A:#08F B:#FF8800 ...  or A(123):#0088FF B(124):#FF8800 (with MagicaVoxel palette indices)
-     * @param {string} name The name of the field
+     * @param {string} de The definition of the field
      * @param {string} value The string value of the field
      * @returns {array} An array with Color classes. Each color has an id and exId (may be null)
      */
     // TODO: ALLOW FOR DIRECT INPUT OF AN ARRAY OF COLOR OBJECTS, SIMILAR TO ABOVE FUNCTIONS
-    static parseColorsNew(def, value) {
+    static parseColors(def, value) {
       if (Array.isArray(value)) {
         return value;
       }
@@ -2630,7 +2686,7 @@ class PropertyParser {
 
       let colorParts = parseValue.split(/\s+/);
       colorParts.forEach(function (colorData) {
-          let color  = PropertyParser.parseColorNew(def, colorData.split(':')[1]);
+          let color  = PropertyParser.parseColor(def, colorData.split(':')[1]);
           if (!color) {
             throw {
               name: 'SyntaxError',
@@ -2667,11 +2723,11 @@ class PropertyParser {
 
 class PropertyWriter {
   
-  static writeIntXYZ(value, allowUniform) {
-    return PropertyWriter.writeFloatXYZ(value, allowUniform);
+  static writeXYZInt(value, allowUniform) {
+    return PropertyWriter.writeXYZFloat(value, allowUniform);
   }
 
-  static writeFloatXYZ(value, allowUniform) {
+  static writeXYZFloat(value, allowUniform) {
     let result = null;
     if (value) {
       result = `${value.x}`;
@@ -2749,6 +2805,16 @@ class PropertyWriter {
     return result;
   }
   
+  static writeAtlas(value) {
+    let result = null
+    if (value) {
+      if (Number.isFinite(value.gridX)) {
+        result = `${value.gridX} ${value.gridY} ${value.cellX} ${value.cellY}`;          
+      }
+    }
+    return result;
+  }   
+  
   static writeShell(value) {
     let result = null
     if (value) {
@@ -2824,7 +2890,7 @@ class PropertyWriter {
       completion: "",
       dontWrite: undefined,
       write: undefined,
-      parse: function(value) { return PropertyParser.parseNameNew(this, value); }
+      parse: function(value) { return PropertyParser.parseName(this, value); }
     },
     borderOffset: {
       name: 'borderoffset',
@@ -2835,7 +2901,7 @@ class PropertyWriter {
       completion: "0.5",
       dontWrite: "0.5",
       write: undefined,
-      parse: function(value) { return PropertyParser.parseFloatNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloat(this, value); }
     },
     size: {
       name: 'size',
@@ -2847,7 +2913,7 @@ class PropertyWriter {
       completion: "512 512",
       dontWrite: undefined,
       write: function(value) { return `${value.x} ${value.y}`; },
-      parse: function(value) { return PropertyParser.parseXYFloatNew(this, value); }
+      parse: function(value) { return PropertyParser.parseXYFloat(this, value); }
     },
     cube: {
       name: 'cube',
@@ -2858,7 +2924,7 @@ class PropertyWriter {
       completion: "false",
       dontWrite: "false",
       write: undefined,
-      parse: function(value) { return PropertyParser.parseBooleanNew(this, value); }
+      parse: function(value) { return PropertyParser.parseBoolean(this, value); }
     },
     image: {
       name: 'image',
@@ -2869,7 +2935,7 @@ class PropertyWriter {
       completion: "",
       dontWrite: undefined,
       write: undefined,
-      parse: function(value) { return PropertyParser.parseStringNew(this, value); }
+      parse: function(value) { return PropertyParser.parseString(this, value); }
     }
   };
 })();
@@ -3007,7 +3073,7 @@ class TextureWriter {
       completion: "#F80",
       dontWrite: undefined,
       write: undefined,
-      parse: function(value) { return PropertyParser.parseColorNew(this, value); }
+      parse: function(value) { return PropertyParser.parseColor(this, value); }
     },  
     intensity: {
       name: 'intensity',
@@ -3018,7 +3084,7 @@ class TextureWriter {
       completion: "0.5",
       dontWrite: "1",
       write: undefined,
-      parse: function(value) { return PropertyParser.parseFloatNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloat(this, value); }
     },  
     direction: {
       name: 'direction',
@@ -3029,8 +3095,8 @@ class TextureWriter {
       allowUniform: false,
       completion: "1 1 0",
       dontWrite: undefined,
-      write: function(value) { return `${value.x} ${value.y} ${value.z}`; },
-      parse: function(value) { return PropertyParser.parseXYZFloatNew(this, value); }
+      write: function(value) { return PropertyWriter.writeXYZFloat(value, false); },
+      parse: function(value) { return PropertyParser.parseXYZFloat(this, value); }
     },
     atVoxel: {
       name: 'atvoxel',
@@ -3041,7 +3107,7 @@ class TextureWriter {
       completion: "V",
       dontWrite: undefined,
       write: function(value) { return `${value}`; },
-      parse: function(value) { return PropertyParser.parseColorIdNew(this, value); }
+      parse: function(value) { return PropertyParser.parseColorId(this, value); }
     },
     position: {
       name: 'position',
@@ -3052,8 +3118,8 @@ class TextureWriter {
       allowUniform: false,
       completion: "2 2 0",
       dontWrite: undefined,
-      write: function(value) { return `${value.x} ${value.y} ${value.z}`; },
-      parse: function(value) { return PropertyParser.parseXYZFloatNew(this, value); }
+      write: function(value) { return PropertyWriter.writeXYZFloat(value, false); },
+      parse: function(value) { return PropertyParser.parseXYZFloat(this, value); }
     },
     distance: {
       name: 'distance',
@@ -3064,7 +3130,7 @@ class TextureWriter {
       completion: "10",
       dontWrite: undefined,
       write: undefined,
-      parse: function(value) { return PropertyParser.parseFloatNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloat(this, value); }
     },  
     size: {
       name: 'size',
@@ -3075,7 +3141,7 @@ class TextureWriter {
       completion: "1",
       dontWrite: "0",
       write: undefined,
-      parse: function(value) { return PropertyParser.parseFloatNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloat(this, value); }
     },  
     detail: {
       name: 'detail',
@@ -3086,7 +3152,7 @@ class TextureWriter {
       completion: "2",
       dontWrite: "1",
       write: undefined,
-      parse: function(value) { return PropertyParser.parseFloatNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloat(this, value); }
     },
     castShadow: {
       name: 'castshadow',
@@ -3097,7 +3163,7 @@ class TextureWriter {
       completion: "true",
       dontWrite: undefined,
       write: undefined,
-      parse: function(value) { return PropertyParser.parseBooleanNew(this, value); }
+      parse: function(value) { return PropertyParser.parseBoolean(this, value); }
     },     
     data: {
       name: 'data',
@@ -3108,7 +3174,7 @@ class TextureWriter {
       completion: "data 0.5 0.5",
       dontWrite: undefined,
       write: function(value) { return PropertyWriter.writeVertexData(value); },
-      parse: function(value) { return PropertyParser.parseDataNew(this, value); }
+      parse: function(value) { return PropertyParser.parseData(this, value); }
     },    
 };
 })();
@@ -3305,7 +3371,7 @@ class LightWriter {
       completion: "",
       dontWrite: undefined,
       write: undefined,
-      parse: function(value) { return PropertyParser.parseNameNew(this, value); }
+      parse: function(value) { return PropertyParser.parseName(this, value); }
     },   
     clone: {
       name: 'clone',
@@ -3316,7 +3382,7 @@ class LightWriter {
       completion: "",
       dontWrite: undefined,
       write: undefined,
-      parse: function(value) { return PropertyParser.parseNameNew(this, value); }
+      parse: function(value) { return PropertyParser.parseName(this, value); }
     },    
     prefab: {
       name: 'prefab',
@@ -3327,7 +3393,7 @@ class LightWriter {
       completion: "true",
       dontWrite: undefined,
       write: undefined,
-      parse: function(value) { return PropertyParser.parseBooleanNew(this, value); }
+      parse: function(value) { return PropertyParser.parseBoolean(this, value); }
     },    
     group: {
       name: 'group',
@@ -3338,7 +3404,7 @@ class LightWriter {
       completion: "",
       dontWrite: '*',
       write: undefined,
-      parse: function(value) { return PropertyParser.parseNameNew(this, value); }, 
+      parse: function(value) { return PropertyParser.parseName(this, value); }, 
     },      
     swap: {
       name: 'swap',
@@ -3349,7 +3415,7 @@ class LightWriter {
       completion: "A:B",
       dontWrite: undefined,
       write: function(value) { return PropertyWriter.writeSwap(value); },
-      parse: function(value) { return PropertyParser.parseSwapNew(this, value); }
+      parse: function(value) { return PropertyParser.parseSwap(this, value); }
     },        
     recolor: {
       name: 'recolor',
@@ -3360,7 +3426,7 @@ class LightWriter {
       completion: "V:#F80",
       dontWrite: undefined,
       write: function(value) { return PropertyWriter.writeColors(value); },
-      parse: function(value) { return PropertyParser.parseColorsNew(this, value); }
+      parse: function(value) { return PropertyParser.parseColors(this, value); }
     },        
     scale: {
       name: 'scale',
@@ -3371,19 +3437,19 @@ class LightWriter {
       allowUniform: true,
       completion: "1 1 1",
       dontWrite: "1 1 1",
-      write: function(value) { return PropertyWriter.writeFloatXYZ(value, true); },
-      parse: function(value) { return PropertyParser.parseScaleNew(this, value); }
+      write: function(value) { return PropertyWriter.writeXYZFloat(value, true); },
+      parse: function(value) { return PropertyParser.parseScale(this, value); }
     },
     origin: {
       name: 'origin',
       doc: "The origin for the group.",
       format: "{ -x x +x -y y +y -z z +z }",
       values: undefined,
-      defaultValue: "x y z",
+      defaultValue: undefined,
       completion: "-y",
       dontWrite: "x y z",
       write: function(value) { return `${Planar.toString(value)}`; },
-      parse: function(value) { return PropertyParser.parsePlanarPointNew(this, value); }
+      parse: function(value) { return PropertyParser.parsePlanarPoint(this, value); }
     },      
     resize: {
       name: 'resize',
@@ -3394,7 +3460,7 @@ class LightWriter {
       completion: "fit",
       dontWrite: undefined,
       write: undefined,
-      parse: function(value) { return PropertyParser.parseEnumNew(this, value); }
+      parse: function(value) { return PropertyParser.parseEnum(this, value); }
     },            
     rotation: {
       name: 'rotation',
@@ -3405,8 +3471,8 @@ class LightWriter {
       defaultValue: { x:undefined, y:undefined, z:undefined },
       completion: "0 45 0",
       dontWrite: undefined,
-      write: function(value) { return PropertyWriter.writeFloatXYZ(value, false); },
-      parse: function(value) { return PropertyParser.parseXYZFloatNew(this, value); }
+      write: function(value) { return PropertyWriter.writeXYZFloat(value, false); },
+      parse: function(value) { return PropertyParser.parseXYZFloat(this, value); }
     },
     position: {
       name: 'position',
@@ -3417,8 +3483,8 @@ class LightWriter {
       defaultValue: { x:undefined, y:undefined, z:undefined },
       completion: "0 0.5 0",
       dontWrite: undefined,
-      write: function(value) { return PropertyWriter.writeFloatXYZ(value, false); },
-      parse: function(value) { return PropertyParser.parseXYZFloatNew(this, value); }
+      write: function(value) { return PropertyWriter.writeXYZFloat(value, false); },
+      parse: function(value) { return PropertyParser.parseXYZFloat(this, value); }
     },  
     translation: {
       name: 'translation',
@@ -3429,8 +3495,8 @@ class LightWriter {
       defaultValue: { x:undefined, y:undefined, z:undefined },
       completion: "0 0 0",
       dontWrite: undefined,
-      write: function(value) { return PropertyWriter.writeFloatXYZ(value, false); },
-      parse: function(value) { return PropertyParser.parseXYZFloatNew(this, value); }
+      write: function(value) { return PropertyWriter.writeXYZFloat(value, false); },
+      parse: function(value) { return PropertyParser.parseXYZFloat(this, value); }
     },
     _shape: {
       title: "Shape properties"
@@ -3451,12 +3517,12 @@ class LightWriter {
       completion: "cylindery",
       dontWrite: undefined,
       write: undefined,
-      parse: function(value) { return PropertyParser.parseEnumNew(this, value); }
+      parse: function(value) { return PropertyParser.parseEnum(this, value); }
     },    
     _scaleMeta: {
       meta: "scale<axis><over>",
       hide: true,
-      title: "Linear interpolated scale.",
+      title: "Linear interpolated scale",
       doc: "Linear interpolated scale. E.g. scalexy = 1 1 0 scales x over y like a house. Is not applied to nested groups. When textures are distored use simplify = false.\nOptions: scaleyx, scalezx, scalexy, scalezy, scalexz, scaleyz",
       format: "scale<axis><over> = <scale0> ... <scaleN>"
     },     
@@ -3470,7 +3536,7 @@ class LightWriter {
       completion: "1.5 0.5 1.5",
       dontWrite: undefined,
       write: function(value) { return value.join(' '); },
-      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloatArray(this, value); }
     },     
     scaleZX: {
       name: 'scalezx',
@@ -3482,7 +3548,7 @@ class LightWriter {
       completion: "1.5 0.5 1.5",
       dontWrite: undefined,
       write: function(value) { return value.join(' '); },
-      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloatArray(this, value); }
     },
     scaleXY: {
       name: 'scalexy',
@@ -3494,7 +3560,7 @@ class LightWriter {
       completion: "1.5 0.5 1.5",
       dontWrite: undefined,
       write: function(value) { return value.join(' '); },
-      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloatArray(this, value); }
     },    
     scaleZY: {
       name: 'scalezy',
@@ -3506,7 +3572,7 @@ class LightWriter {
       completion: "1.5 0.5 1.5",
       dontWrite: undefined,
       write: function(value) { return value.join(' '); },
-      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloatArray(this, value); }
     },       
     scaleXZ: {
       name: 'scalexz',
@@ -3518,7 +3584,7 @@ class LightWriter {
       completion: "1.5 0.5 1.5",
       dontWrite: undefined,
       write: function(value) { return value.join(' '); },
-      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloatArray(this, value); }
     },       
     scaleYZ: {
       name: 'scaleyz',
@@ -3530,12 +3596,12 @@ class LightWriter {
       completion: "1.5 0.5 1.5",
       dontWrite: undefined,
       write: function(value) { return value.join(' '); },
-      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloatArray(this, value); }
     },     
     _smoothScaleMeta: {
       meta: "smoothscale<axis><over>",
       hide: true,
-      title: "Smooth interpolated scale.",
+      title: "Smooth interpolated scale",
       doc: "Smooth interpolated scale. E.g. scalexy = 1 1 0 scales x over y like a house. Is not applied to nested groups. When textures are distored use simplify = false.\nOptions: smoothscaleyx, smoothscalezx, smoothscalexy, smoothscalezy, smoothscalexz, smoothscaleyz",
       format: "smoothscale<axis><over> = <scale0> ... <scaleN>"
     },     
@@ -3549,7 +3615,7 @@ class LightWriter {
       completion: "1.5 0.5 1.5",
       dontWrite: undefined,
       write: function(value) { return value.join(' '); },
-      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloatArray(this, value); }
     },     
     smoothScaleZX: {
       name: 'smoothscalezx',
@@ -3561,7 +3627,7 @@ class LightWriter {
       completion: "1.5 0.5 1.5",
       dontWrite: undefined,
       write: function(value) { return value.join(' '); },
-      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloatArray(this, value); }
     },
     smoothScaleXY: {
       name: 'smoothscalexy',
@@ -3573,7 +3639,7 @@ class LightWriter {
       completion: "1.5 0.5 1.5",
       dontWrite: undefined,
       write: function(value) { return value.join(' '); },
-      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloatArray(this, value); }
     },    
     smoothScaleZY: {
       name: 'smoothscalezy',
@@ -3585,7 +3651,7 @@ class LightWriter {
       completion: "1.5 0.5 1.5",
       dontWrite: undefined,
       write: function(value) { return value.join(' '); },
-      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloatArray(this, value); }
     },       
     smoothScaleXZ: {
       name: 'smoothscalexz',
@@ -3597,7 +3663,7 @@ class LightWriter {
       completion: "1.5 0.5 1.5",
       dontWrite: undefined,
       write: function(value) { return value.join(' '); },
-      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloatArray(this, value); }
     },       
     smoothScaleYZ: {
       name: 'smoothscaleyz',
@@ -3609,13 +3675,13 @@ class LightWriter {
       completion: "1.5 0.5 1.5",
       dontWrite: undefined,
       write: function(value) { return value.join(' '); },
-      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloatArray(this, value); }
     },     
     _rotateMeta: {
       name: 'id',
       hide: true,
       meta: "rotate<over>",
-      title: "Linear interpolated rotate.",
+      title: "Linear interpolated rotate",
       doc: "Linear interpolated rotate. E.g. rotatey = 0 90 180 twists around in the y direction. Is not applied to nested groups. Without deform usually combined with lighting = sides.\nOptions: rotatex, rotatey, rotatez",
       format: "rotate<over> = <degrees0> ... <degreesN>"
     },                 
@@ -3629,7 +3695,7 @@ class LightWriter {
       completion: "0 90 0",
       dontWrite: undefined,
       write: function(value) { return value.join(' '); },
-      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloatArray(this, value); }
     },     
     rotateY: {
       name: 'rotatey',
@@ -3641,7 +3707,7 @@ class LightWriter {
       completion: "0 90 0",
       dontWrite: undefined,
       write: function(value) { return value.join(' '); },
-      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloatArray(this, value); }
     },     
     rotateZ: {
       name: 'rotatez',
@@ -3653,12 +3719,12 @@ class LightWriter {
       completion: "0 90 0",
       dontWrite: undefined,
       write: function(value) { return value.join(' '); },
-      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloatArray(this, value); }
     },     
     _smoothRotateMeta: {
       meta: "smoothrotate<axis><over>",
       hide: true,
-      title: "Smooth interpolated rotate.",
+      title: "Smooth interpolated rotate",
       doc: "Smooth interpolated rotate. E.g. rotatey = 0 90 180 twists around in the y direction. Is not applied to nested groups. Without deform usually combined with lighting = sides.\nOptions: smoothrotatex, smoothrotatey, smoothrotatez",
       format: "smoothrotate<axis><over> = <degrees0> ... <degreesN>"
     },                 
@@ -3672,7 +3738,7 @@ class LightWriter {
       completion: "0 90 0",
       dontWrite: undefined,
       write: function(value) { return value.join(' '); },
-      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloatArray(this, value); }
     },     
     smoothRotateY: {
       name: 'smoothrotatey',
@@ -3684,7 +3750,7 @@ class LightWriter {
       completion: "0 90 0",
       dontWrite: undefined,
       write: function(value) { return value.join(' '); },
-      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloatArray(this, value); }
     },     
     smoothRotateZ: {
       name: 'smoothrotatez',
@@ -3696,7 +3762,7 @@ class LightWriter {
       completion: "0 90 0",
       dontWrite: undefined,
       write: function(value) { return value.join(' '); },
-      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloatArray(this, value); }
     },     
     _translateMeta: {
       meta: "translate<axis><over>",
@@ -3715,7 +3781,7 @@ class LightWriter {
       completion: "-1 1 -1",
       dontWrite: undefined,
       write: function(value) { return value.join(' '); },
-      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloatArray(this, value); }
     },     
     translateZX: {
       name: 'translatezx',
@@ -3727,7 +3793,7 @@ class LightWriter {
       completion: "-1 1 -1",
       dontWrite: undefined,
       write: function(value) { return value.join(' '); },
-      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloatArray(this, value); }
     },     
     translateXY: {
       name: 'translatexy',
@@ -3739,7 +3805,7 @@ class LightWriter {
       completion: "-1 1 -1",
       dontWrite: undefined,
       write: function(value) { return value.join(' '); },
-      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloatArray(this, value); }
     },
     translateZY: {
       name: 'translatezy',
@@ -3751,7 +3817,7 @@ class LightWriter {
       completion: "-1 1 -1",
       dontWrite: undefined,
       write: function(value) { return value.join(' '); },
-      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloatArray(this, value); }
     },       
     translateXZ: {
       name: 'translatexz',
@@ -3763,7 +3829,7 @@ class LightWriter {
       completion: "-1 1 -1",
       dontWrite: undefined,
       write: function(value) { return value.join(' '); },
-      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloatArray(this, value); }
     },       
     translateYZ: {
       name: 'translateyz',
@@ -3775,7 +3841,7 @@ class LightWriter {
       completion: "-1 1 -1",
       dontWrite: undefined,
       write: function(value) { return value.join(' '); },
-      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloatArray(this, value); }
     },
     _smoothTranslateMeta: {
       meta: "smoothtranslate<axis><over>",
@@ -3794,7 +3860,7 @@ class LightWriter {
       completion: "-1 1 -1",
       dontWrite: undefined,
       write: function(value) { return value.join(' '); },
-      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloatArray(this, value); }
     },     
     smoothTranslateZX: {
       name: 'smoothtranslatezx',
@@ -3806,7 +3872,7 @@ class LightWriter {
       completion: "-1 1 -1",
       dontWrite: undefined,
       write: function(value) { return value.join(' '); },
-      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloatArray(this, value); }
     },     
     smoothTranslateXY: {
       name: 'smoothtranslatexy',
@@ -3818,7 +3884,7 @@ class LightWriter {
       completion: "-1 1 -1",
       dontWrite: undefined,
       write: function(value) { return value.join(' '); },
-      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloatArray(this, value); }
     },
     smoothTranslateZY: {
       name: 'smoothtranslatezy',
@@ -3830,7 +3896,7 @@ class LightWriter {
       completion: "-1 1 -1",
       dontWrite: undefined,
       write: function(value) { return value.join(' '); },
-      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloatArray(this, value); }
     },       
     smoothTranslateXZ: {
       name: 'smoothtranslatexz',
@@ -3842,7 +3908,7 @@ class LightWriter {
       completion: "-1 1 -1",
       dontWrite: undefined,
       write: function(value) { return value.join(' '); },
-      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloatArray(this, value); }
     },       
     smoothTranslateYZ: {
       name: 'smoothtranslateyz',
@@ -3854,7 +3920,7 @@ class LightWriter {
       completion: "-1 1 -1",
       dontWrite: undefined,
       write: function(value) { return value.join(' '); },
-      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloatArray(this, value); }
     },
     _bendMeta: {
       meta: "bend<axis><over>",
@@ -3874,7 +3940,7 @@ class LightWriter {
       completion: "90 10",
       dontWrite: undefined,
       write: function(value) { return `${value.x} ${value.y}`; },
-      parse: function(value) { return PropertyParser.parseXYFloatNew(this, value); }
+      parse: function(value) { return PropertyParser.parseXYFloat(this, value); }
     },     
     bendZX: {
       name: 'bendzx',
@@ -3887,7 +3953,7 @@ class LightWriter {
       completion: "90 10",
       dontWrite: undefined,
       write: function(value) { return `${value.x} ${value.y}`; },
-      parse: function(value) { return PropertyParser.parseXYFloatNew(this, value); }
+      parse: function(value) { return PropertyParser.parseXYFloat(this, value); }
     },
     bendXY: {
       name: 'bendxy',
@@ -3900,7 +3966,7 @@ class LightWriter {
       completion: "90 10",
       dontWrite: undefined,
       write: function(value) { return `${value.x} ${value.y}`; },
-      parse: function(value) { return PropertyParser.parseXYFloatNew(this, value); }
+      parse: function(value) { return PropertyParser.parseXYFloat(this, value); }
     },    
     bendZY: {
       name: 'bendzy',
@@ -3913,7 +3979,7 @@ class LightWriter {
       completion: "90 10",
       dontWrite: undefined,
       write: function(value) { return `${value.x} ${value.y}`; },
-      parse: function(value) { return PropertyParser.parseXYFloatNew(this, value); }
+      parse: function(value) { return PropertyParser.parseXYFloat(this, value); }
     },       
     bendXZ: {
       name: 'bendxz',
@@ -3926,7 +3992,7 @@ class LightWriter {
       completion: "90 10",
       dontWrite: undefined,
       write: function(value) { return `${value.x} ${value.y}`; },
-      parse: function(value) { return PropertyParser.parseXYFloatNew(this, value); }
+      parse: function(value) { return PropertyParser.parseXYFloat(this, value); }
     },       
     bendYZ: {
       name: 'bendyz',
@@ -3939,7 +4005,7 @@ class LightWriter {
       completion: "90 10",
       dontWrite: undefined,
       write: function(value) { return `${value.x} ${value.y}`; },
-      parse: function(value) { return PropertyParser.parseXYFloatNew(this, value); }
+      parse: function(value) { return PropertyParser.parseXYFloat(this, value); }
     }    
   };
 })();
@@ -4144,7 +4210,7 @@ class GroupWriter {
       base, basic, lambert, phong, standard, physical, toon, matcap, normal,
       dontWrite: "standard",
       write: undefined,
-      parse: function(value) { return PropertyParser.parseEnumNew(this, value); }
+      parse: function(value) { return PropertyParser.parseEnum(this, value); }
     },
     name: {
       name:'name',
@@ -4156,7 +4222,7 @@ class GroupWriter {
       base, basic, lambert, phong, standard, physical, toon, matcap, normal,
       dontWrite: undefined,
       write: undefined,
-      parse: function(value) { return PropertyParser.parseNameNew(this, value); }
+      parse: function(value) { return PropertyParser.parseName(this, value); }
     },
     group: {
       name:'group',
@@ -4168,7 +4234,7 @@ class GroupWriter {
       basic, lambert, phong, standard, physical, toon, matcap, normal,
       dontWrite: '*',
       write: undefined,
-      parse: function(value) { return PropertyParser.parseNameNew(this, value); }
+      parse: function(value) { return PropertyParser.parseName(this, value); }
     },    
     lighting: {
       name:'lighting',
@@ -4180,7 +4246,7 @@ class GroupWriter {
       basic, lambert, phong, standard, physical, toon, matcap, normal,
       dontWrite: "flat",
       write: undefined,
-      parse: function(value) { return PropertyParser.parseEnumNew(this, value); }
+      parse: function(value) { return PropertyParser.parseEnum(this, value); }
     },
     side: {
       name:'side',
@@ -4192,7 +4258,7 @@ class GroupWriter {
       base, basic, lambert, phong, standard, physical, toon, matcap, normal,
       dontWrite: "front",
       write: undefined,
-      parse: function(value) { return PropertyParser.parseEnumNew(this, value); }
+      parse: function(value) { return PropertyParser.parseEnum(this, value); }
     },
     shadowSide: {
       name:'shadowside',
@@ -4204,7 +4270,7 @@ class GroupWriter {
       base, basic, lambert, phong, standard, physical, toon, matcap, normal,
       dontWrite: undefined,
       write: undefined,
-      parse: function(value) { return PropertyParser.parseEnumNew(this, value); }
+      parse: function(value) { return PropertyParser.parseEnum(this, value); }
     },
     wireframe: {
       name:'wireframe',
@@ -4216,7 +4282,7 @@ class GroupWriter {
       base, basic, lambert, phong, standard, physical, toon, normal,
       dontWrite: undefined,
       write: undefined,
-      parse: function(value) { return PropertyParser.parseBooleanNew(this, value); }
+      parse: function(value) { return PropertyParser.parseBoolean(this, value); }
     },        
     _surface: {
       title: "Surface properties"
@@ -4231,7 +4297,7 @@ class GroupWriter {
       base, phong, 
       dontWrite: "30",
       write: undefined,
-      parse: function(value) { return PropertyParser.parseFloatNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloat(this, value); }
     },
     reflectivity: {
       name:'reflectivity',
@@ -4243,7 +4309,7 @@ class GroupWriter {
       base, basic, lambert, phong, physical, 
       dontWrite: undefined,
       write: undefined,
-      parse: function(value) { return PropertyParser.parseFloatNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloat(this, value); }
     },
     combine: {
       name:'combine',
@@ -4255,7 +4321,7 @@ class GroupWriter {
       base, basic, lambert, phong, 
       dontWrite: "mix",
       write: undefined,
-      parse: function(value) { return PropertyParser.parseEnumNew(this, value); }
+      parse: function(value) { return PropertyParser.parseEnum(this, value); }
     },
     roughness: {
       name:'roughness',
@@ -4267,7 +4333,7 @@ class GroupWriter {
       base, standard, physical, 
       dontWrite: "1",
       write: undefined,
-      parse: function(value) { return PropertyParser.parseFloatNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloat(this, value); }
     },
     metalness: {
       name:'metalness',
@@ -4279,7 +4345,7 @@ class GroupWriter {
       base, standard, physical, 
       dontWrite: "0",
       write: undefined,
-      parse: function(value) { return PropertyParser.parseFloatNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloat(this, value); }
     },
     _maps: {
       title: "Maps"
@@ -4294,11 +4360,108 @@ class GroupWriter {
       base, basic, lambert, phong, standard, physical, toon, matcap, 
       dontWrite: undefined,
       write: undefined,
-      parse: function(value) { return PropertyParser.parseNameNew(this, value); } 
+      parse: function(value) { return PropertyParser.parseName(this, value); } 
     },
+    atlas: {
+      name:'atlas',
+      doc: "Combines with maps, but uses only one cell in an atlas for all faces of the voxels of this material.",
+      format: "<gridx> <gridy> <cellx> <celly>",
+      values: undefined,
+      defaultValue: undefined,
+      completion: "8 8 0 0",
+      basic, lambert, phong, standard, physical, toon, matcap, normal,
+      dontWrite: undefined,
+      write: function(value) { return PropertyWriter.writeAtlas(value); },
+      parse: function(value) { return PropertyParser.parseAtlas(this, value); }
+    },   
+    _atlasMeta: {
+      meta: "atlas<face>",
+      title: "Single face atlas",
+      doc: "Specifies the atlas for one face, E.g. atlaspy = 8 8 2 3 shows cell (2,3) on the positive Y face. \nOptions: atlasnx, atlaspx, atlasny, atlaspy, atlasnz, atlaspz.",
+      format: "atlas<face> = <gridx> <gridy> <cellx> <celly>",
+      basic, lambert, phong, standard, physical, toon, matcap, normal
+    },     
+    atlasNX: {
+      name:'atlasnx',
+      hide: true,
+      doc: "Specifies the atlas texture for the negative X face.",
+      format: "<gridx> <gridy> <cellx> <celly>",
+      values: undefined,
+      defaultValue: undefined,
+      completion: "8 8 0 0",
+      basic, lambert, phong, standard, physical, toon, matcap, normal,
+      dontWrite: undefined,
+      write: function(value) { return PropertyWriter.writeAtlas(value); },
+      parse: function(value) { return PropertyParser.parseAtlas(this, value); }
+    },     
+    atlasPX: {
+      name:'atlaspx',
+      hide: true,
+      doc: "Specifies the atlas texture for the positive X face.",
+      format: "<gridx> <gridy> <cellx> <celly>",
+      values: undefined,
+      defaultValue: undefined,
+      completion: "8 8 0 0",
+      basic, lambert, phong, standard, physical, toon, matcap, normal,
+      dontWrite: undefined,
+      write: function(value) { return PropertyWriter.writeAtlas(value); },
+      parse: function(value) { return PropertyParser.parseAtlas(this, value); }
+    },    
+    atlasNY: {
+      name:'atlasny',
+      hide: true,
+      doc: "Specifies the atlas texture for the negative Y face.",
+      format: "<gridx> <gridy> <cellx> <celly>",
+      values: undefined,
+      defaultValue: undefined,
+      completion: "8 8 0 0",
+      basic, lambert, phong, standard, physical, toon, matcap, normal,
+      dontWrite: undefined,
+      write: function(value) { return PropertyWriter.writeAtlas(value); },
+      parse: function(value) { return PropertyParser.parseAtlas(this, value); }
+    },     
+    atlasPY: {
+      name:'atlaspy',
+      hide: true,
+      doc: "Specifies the atlas texture for the positive Y face.",
+      format: "<gridx> <gridy> <cellx> <celly>",
+      values: undefined,
+      defaultValue: undefined,
+      completion: "8 8 0 0",
+      basic, lambert, phong, standard, physical, toon, matcap, normal,
+      dontWrite: undefined,
+      write: function(value) { return PropertyWriter.writeAtlas(value); },
+      parse: function(value) { return PropertyParser.parseAtlas(this, value); }
+    },    
+    atlasNZ: {
+      name:'atlasnz',
+      hide: true,
+      doc: "Specifies the atlas texture for the negative Z face.",
+      format: "<gridx> <gridy> <cellx> <celly>",
+      values: undefined,
+      defaultValue: undefined,
+      completion: "8 8 0 0",
+      basic, lambert, phong, standard, physical, toon, matcap, normal,
+      dontWrite: undefined,
+      write: function(value) { return PropertyWriter.writeAtlas(value); },
+      parse: function(value) { return PropertyParser.parseAtlas(this, value); }
+    },     
+    atlasPZ: {
+      name:'atlaspz',
+      hide: true,
+      doc: "Specifies the atlas texture for the positive Z face.",
+      format: "<gridx> <gridy> <cellx> <celly>",
+      values: undefined,
+      defaultValue: undefined,
+      completion: "8 8 0 0",
+      basic, lambert, phong, standard, physical, toon, matcap, normal,
+      dontWrite: undefined,
+      write: function(value) { return PropertyWriter.writeAtlas(value); },
+      parse: function(value) { return PropertyParser.parseAtlas(this, value); }
+    },    
     mapTransform: {
       name:'maptransform',
-      doc: "Shift, scale or rotate textures.",
+      doc: "Shift, scale or rotate textures. For atlases use only integers and no rotation.",
       format: "<width> <height> [<xoffset> <yoffset> [<rotation>]]",
       values: undefined,
       defaultValue: undefined,
@@ -4306,8 +4469,21 @@ class GroupWriter {
       base, basic, lambert, phong, standard, physical, toon, matcap, normal,
       dontWrite: "-1 -1",
       write: function(value) { return PropertyWriter.writeMapTransform(value); },
-      parse: function(value) { return PropertyParser.parseMapTransformNew(this, value); }
+      parse: function(value) { return PropertyParser.parseMapTransform(this, value); }
     },
+    mapProject: {
+      name: 'mapproject',
+      doc: "Projects the texture from the direction specified.",
+      format: "<x> <y> <z>",
+      values: undefined,
+      defaultValue: { x:undefined, y:undefined, z:undefined },
+      completion: "0 1 1",
+      allowUniform: false,
+      base, basic, lambert, phong, standard, physical, toon, matcap, normal,
+      dontWrite: undefined,
+      write: function(value) { return PropertyWriter.writeXYZFloat(value, false); },
+      parse: function(value) { return PropertyParser.parseXYZFloat(this, value); }
+    },    
     normalMap: {
       name:'normalmap',
       doc: "The texture to create a normal map (e.g. visual bumps or ridges). ",
@@ -4318,7 +4494,7 @@ class GroupWriter {
       base, lambert, phong, standard, physical, toon, matcap, normal,
       dontWrite: undefined,
       write: undefined,
-      parse: function(value) { return PropertyParser.parseNameNew(this, value); }
+      parse: function(value) { return PropertyParser.parseName(this, value); }
     },
     normalScale: {
       name:'normalscale',
@@ -4331,7 +4507,7 @@ class GroupWriter {
       completion: "1 1",
       dontWrite: "1 1",
       write: function(value) { return `${value.x} ${value.y}`; },
-      parse: function(value) { return PropertyParser.parseXYFloatNew(this, value); }
+      parse: function(value) { return PropertyParser.parseXYFloat(this, value); }
     },
     bumpMap: {
       name:'bumpmap',
@@ -4343,7 +4519,7 @@ class GroupWriter {
       base, lambert, phong, standard, physical, toon, matcap, normal,
       dontWrite: undefined,
       write: undefined,
-      parse: function(value) { return PropertyParser.parseNameNew(this, value); }
+      parse: function(value) { return PropertyParser.parseName(this, value); }
     },
     bumpScale: {
       name:'bumpscale',
@@ -4355,7 +4531,7 @@ class GroupWriter {
       base, lambert, phong, standard, physical, toon, matcap, normal,
       dontWrite: "1",
       write: undefined,
-      parse: function(value) { return PropertyParser.parseFloatNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloat(this, value); }
     },
     envMap: {
       name:'envmap',
@@ -4367,7 +4543,7 @@ class GroupWriter {
       base, basic, lambert, phong, standard, physical, 
       dontWrite: undefined,
       write: undefined,
-      parse: function(value) { return PropertyParser.parseNameNew(this, value); }
+      parse: function(value) { return PropertyParser.parseName(this, value); }
     },
     envMapIntensity: {
       name:'envmapintensity',
@@ -4379,7 +4555,7 @@ class GroupWriter {
       base, standard, physical, 
       dontWrite: "1",
       write: undefined,
-      parse: function(value) { return PropertyParser.parseFloatNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloat(this, value); }
     },
     roughnessMap: {
       name:'roughnessmap',
@@ -4391,7 +4567,7 @@ class GroupWriter {
       base, standard, physical, 
       dontWrite: undefined,
       write: undefined,
-      parse: function(value) { return PropertyParser.parseNameNew(this, value); }
+      parse: function(value) { return PropertyParser.parseName(this, value); }
     },
     metalnessMap: {
       name:'metalnessmap',
@@ -4403,7 +4579,7 @@ class GroupWriter {
       base, standard, physical, 
       dontWrite: undefined,
       write: undefined,
-      parse: function(value) { return PropertyParser.parseNameNew(this, value); }
+      parse: function(value) { return PropertyParser.parseName(this, value); }
     },
     matcap: {
       name:'matcap',
@@ -4415,7 +4591,7 @@ class GroupWriter {
       base, matcap, 
       dontWrite: undefined,
       write: undefined,
-      parse: function(value) { return PropertyParser.parseNameNew(this, value); }
+      parse: function(value) { return PropertyParser.parseName(this, value); }
     },
     _transparency:{
       title: "Transparency properties"
@@ -4430,7 +4606,7 @@ class GroupWriter {
       base, basic, lambert, phong, standard, physical, toon, matcap, normal,
       dontWrite: "1",
       write: undefined,
-      parse: function(value) { return PropertyParser.parseFloatNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloat(this, value); }
     },
     transparent: {
       name:'transparent',
@@ -4442,7 +4618,7 @@ class GroupWriter {
       base, basic, lambert, phong, standard, physical, toon, matcap, normal,
       dontWrite: undefined,
       write: undefined,
-      parse: function(value) { return PropertyParser.parseBooleanNew(this, value); }
+      parse: function(value) { return PropertyParser.parseBoolean(this, value); }
     },
     alphaTest: {
       name:'alphatest',
@@ -4454,7 +4630,7 @@ class GroupWriter {
       base, basic, lambert, phong, standard, physical, toon, matcap,
       dontWrite: "0",
       write: undefined,
-      parse: function(value) { return PropertyParser.parseFloatNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloat(this, value); }
     },
     alphaToCoverage: {
       name:'alphatocoverage',
@@ -4466,7 +4642,7 @@ class GroupWriter {
       base, basic, lambert, phong, standard, physical, toon, matcap,
       dontWrite: undefined,
       write: undefined,
-      parse: function(value) { return PropertyParser.parseBooleanNew(this, value); }
+      parse: function(value) { return PropertyParser.parseBoolean(this, value); }
     },
     alphaMap: {
       name:'alphamap',
@@ -4478,7 +4654,7 @@ class GroupWriter {
       base, basic, lambert, phong, standard, physical, toon, matcap, 
       dontWrite: undefined,
       write: undefined,
-      parse: function(value) { return PropertyParser.parseNameNew(this, value); }
+      parse: function(value) { return PropertyParser.parseName(this, value); }
     },
     _emissive: {
       title: "Emissive properties"
@@ -4493,7 +4669,7 @@ class GroupWriter {
       base, lambert, phong, standard, physical, toon, 
       dontWrite: undefined,
       write: undefined,
-      parse: function(value) { return PropertyParser.parseColorNew(this, value); }
+      parse: function(value) { return PropertyParser.parseColor(this, value); }
     },
     emissiveIntensity: {
       name:'emissiveintensity',
@@ -4505,7 +4681,7 @@ class GroupWriter {
       base, lambert, phong, standard, physical, toon, 
       dontWrite: "1",
       write: undefined,
-      parse: function(value) { return PropertyParser.parseFloatNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloat(this, value); }
     },
     emissiveMap: {
       name:'emissivemap',
@@ -4517,7 +4693,7 @@ class GroupWriter {
       base, lambert, phong, standard, physical, toon, 
       dontWrite: undefined,
       write: undefined,
-      parse: function(value) { return PropertyParser.parseNameNew(this, value); } 
+      parse: function(value) { return PropertyParser.parseName(this, value); } 
     },
     _specular: {
       title: "Specular properties"
@@ -4532,7 +4708,7 @@ class GroupWriter {
       base, phong, 
       dontWrite: "#111",
       write: undefined,
-      parse: function(value) { return PropertyParser.parseColorNew(this, value); } 
+      parse: function(value) { return PropertyParser.parseColor(this, value); } 
     },
     specularMap: {
       name:'specularmap',
@@ -4544,7 +4720,7 @@ class GroupWriter {
       base, basic, lambert, phong, 
       dontWrite: undefined,
       write: undefined,
-      parse: function(value) { return PropertyParser.parseNameNew(this, value); }
+      parse: function(value) { return PropertyParser.parseName(this, value); }
     },
     specularColor: {
       name:'specular',
@@ -4556,7 +4732,7 @@ class GroupWriter {
       base, physical, 
       dontWrite: "#FFF",
       write: undefined,
-      parse: function(value) { return PropertyParser.parseColorNew(this, value); }
+      parse: function(value) { return PropertyParser.parseColor(this, value); }
     },
     specularColorMap: {
       name:'specularcolormap',
@@ -4568,7 +4744,7 @@ class GroupWriter {
       base, physical, 
       dontWrite: undefined,
       write: undefined,
-      parse: function(value) { return PropertyParser.parseNameNew(this, value); }
+      parse: function(value) { return PropertyParser.parseName(this, value); }
     },
     specularIntensity: {
       name:'specularintensity',
@@ -4580,7 +4756,7 @@ class GroupWriter {
       base, physical, 
       dontWrite: "1",
       write: undefined,
-      parse: function(value) { return PropertyParser.parseFloatNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloat(this, value); }
     },
     specularIntensityMap: {
       name:'specularintensitymap',
@@ -4592,7 +4768,7 @@ class GroupWriter {
       base, physical, 
       dontWrite: undefined,
       write: undefined,
-      parse: function(value) { return PropertyParser.parseNameNew(this, value); }
+      parse: function(value) { return PropertyParser.parseName(this, value); }
     },
     _refraction: {
       title: "Refraction properties"
@@ -4607,7 +4783,7 @@ class GroupWriter {
       base, basic, lambert, phong, 
       dontWrite: undefined,
       write: undefined,
-      parse: function(value) { return PropertyParser.parseFloatNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloat(this, value); }
     },
     ior: {
       name:'ior',
@@ -4619,7 +4795,7 @@ class GroupWriter {
       base, physical, 
       dontWrite: undefined,
       write: undefined,
-      parse: function(value) { return PropertyParser.parseFloatNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloat(this, value); }
     },
     thickness: {
       name:'thickness',
@@ -4631,7 +4807,7 @@ class GroupWriter {
       base, physical, 
       dontWrite: "0",
       write: undefined,
-      parse: function(value) { return PropertyParser.parseFloatNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloat(this, value); }
     },
     thicknessMap: {
       name:'thicknessmap',
@@ -4643,7 +4819,7 @@ class GroupWriter {
       base, physical, 
       dontWrite: undefined,
       write: undefined,
-      parse: function(value) { return PropertyParser.parseNameNew(this, value); }
+      parse: function(value) { return PropertyParser.parseName(this, value); }
     },
     transmission: {
       name:'transmission',
@@ -4655,7 +4831,7 @@ class GroupWriter {
       base, physical, 
       dontWrite: "1",
       write: undefined,
-      parse: function(value) { return PropertyParser.parseFloatNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloat(this, value); }
     },
     transmissionMap: {
       name:'transmissionmap',
@@ -4667,7 +4843,7 @@ class GroupWriter {
       base, physical, 
       dontWrite: undefined,
       write: undefined,
-      parse: function(value) { return PropertyParser.parseNameNew(this, value); }
+      parse: function(value) { return PropertyParser.parseName(this, value); }
     },
     attenuationColor: {
       name:'attenuationcolor',
@@ -4679,7 +4855,7 @@ class GroupWriter {
       base, physical, 
       dontWrite: "#FFF",
       write: undefined,
-      parse: function(value) { return PropertyParser.parseColorNew(this, value); }
+      parse: function(value) { return PropertyParser.parseColor(this, value); }
     },
     attenuationDistance: {
       name:'attenuationdistance',
@@ -4691,7 +4867,7 @@ class GroupWriter {
       base, physical, 
       dontWrite: "Infinity",
       write: undefined,
-      parse: function(value) { return PropertyParser.parseFloatNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloat(this, value); }
     },
     _clearcoat: {
       title: "Clearcoat properties"
@@ -4706,7 +4882,7 @@ class GroupWriter {
       base, physical, 
       dontWrite: "0",
       write: undefined,
-      parse: function(value) { return PropertyParser.parseFloatNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloat(this, value); }
     },
     clearcoatMap: {
       name:'clearcoatmap',
@@ -4718,7 +4894,7 @@ class GroupWriter {
       base, physical, 
       dontWrite: undefined,
       write: undefined,
-      parse: function(value) { return PropertyParser.parseNameNew(this, value); }
+      parse: function(value) { return PropertyParser.parseName(this, value); }
     },
     clearcoatNormalMap: {
       name:'clearcoatnormalmap',
@@ -4730,7 +4906,7 @@ class GroupWriter {
       completion: "",
       dontWrite: undefined,
       write: undefined,
-      parse: function(value) { return PropertyParser.parseNameNew(this, value); }
+      parse: function(value) { return PropertyParser.parseName(this, value); }
     },
     clearcoatNormalScale: {
       name:'normalscale',
@@ -4743,7 +4919,7 @@ class GroupWriter {
       completion: "1 1",
       dontWrite: "1 1",
       write: function(value) { return `${value.x} ${value.y}`; },
-      parse: function(value) { return PropertyParser.parseXYFloatNew(this, value); }
+      parse: function(value) { return PropertyParser.parseXYFloat(this, value); }
     },
     clearcoatRoughness: {
       name:'clearcoatroughness',
@@ -4755,7 +4931,7 @@ class GroupWriter {
       completion: "0.5",
       dontWrite: "0",
       write: undefined,
-      parse: function(value) { return PropertyParser.parseFloatNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloat(this, value); }
     },
     clearcoatRoughnessMap: {
       name:'clearcoatroughnessmap',
@@ -4767,7 +4943,7 @@ class GroupWriter {
       completion: "",
       dontWrite: undefined,
       write: undefined,
-      parse: function(value) { return PropertyParser.parseNameNew(this, value); }
+      parse: function(value) { return PropertyParser.parseName(this, value); }
     },
     _displacement:{
       title: "Displacement properties",
@@ -4782,7 +4958,7 @@ class GroupWriter {
       completion: "",
       dontWrite: undefined,
       write: undefined,
-      parse: function(value) { return PropertyParser.parseNameNew(this, value); }
+      parse: function(value) { return PropertyParser.parseName(this, value); }
     },
     displacementScale: {
       name:'displacementscale',
@@ -4794,7 +4970,7 @@ class GroupWriter {
       completion: "1",
       dontWrite: "1",
       write: undefined,
-      parse: function(value) { return PropertyParser.parseFloatNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloat(this, value); }
     },
     displacementBias: {
       name:'displacementbias',
@@ -4806,7 +4982,7 @@ class GroupWriter {
       completion: "0",
       dontWrite: "0",
       write: undefined,
-      parse: function(value) { return PropertyParser.parseFloatNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloat(this, value); }
     },
     _effects: {
       title: "Effects properties"
@@ -4821,7 +4997,7 @@ class GroupWriter {
       completion: "additive",
       dontWrite: "normal",
       write: undefined,
-      parse: function(value) { return PropertyParser.parseEnumNew(this, value) }
+      parse: function(value) { return PropertyParser.parseEnum(this, value) }
     },
     dithering: {
       name:'dithering',
@@ -4833,7 +5009,7 @@ class GroupWriter {
       completion: "true",
       dontWrite: "false",
       write: undefined,
-      parse: function(value) { return PropertyParser.parseBooleanNew(this, value) }
+      parse: function(value) { return PropertyParser.parseBoolean(this, value) }
     },
     fog: {
       name:'fog',
@@ -4845,7 +5021,7 @@ class GroupWriter {
       completion: true,
       dontWrite: "true",
       write: undefined,
-      parse: function(value) { return PropertyParser.parseBooleanNew(this, value) }
+      parse: function(value) { return PropertyParser.parseBoolean(this, value) }
     },
     lights: {
       name:'lights',
@@ -4857,7 +5033,7 @@ class GroupWriter {
       completion: false,
       dontWrite: "true",
       write: undefined,
-      parse: function(value) { return PropertyParser.parseBooleanNew(this, value) }
+      parse: function(value) { return PropertyParser.parseBoolean(this, value) }
     },
     castShadow: {
       name:'castshadow',
@@ -4869,7 +5045,7 @@ class GroupWriter {
       completion: "false",
       dontWrite: "true",
       write: undefined,
-      parse: function(value) { return PropertyParser.parseBooleanNew(this, value) }
+      parse: function(value) { return PropertyParser.parseBoolean(this, value) }
     },
     receiveShadow: {
       name:'receiveshadow',
@@ -4881,7 +5057,7 @@ class GroupWriter {
       completion: "false",
       dontWrite: "true",
       write: undefined,
-      parse: function(value) { return PropertyParser.parseBooleanNew(this, value) }
+      parse: function(value) { return PropertyParser.parseBoolean(this, value) }
     },      
     ao: {
       name:'ao',
@@ -4893,7 +5069,7 @@ class GroupWriter {
       completion: "#400 5 0.5",
       dontWrite: undefined,
       write: function(value) { return PropertyWriter.writeAo(value); },
-      parse: function(value) { return PropertyParser.parseAoNew(this, value); }
+      parse: function(value) { return PropertyParser.parseAo(this, value); }
     },
     quickAo: {
       name:'quickao',
@@ -4905,7 +5081,7 @@ class GroupWriter {
       completion: "#400 0.5",
       dontWrite: undefined,
       write: function(value) { return PropertyWriter.writeQuickAo(value); },
-      parse: function(value) { return PropertyParser.parseQuickAoNew(this, value); }
+      parse: function(value) { return PropertyParser.parseQuickAo(this, value); }
     },    
     shell: {
       name:'shell',
@@ -4917,7 +5093,7 @@ class GroupWriter {
       completion: "V 0.5 W 0.5",
       dontWrite: undefined,
       write: function(value) { return PropertyWriter.writeShell(value); },
-      parse: function(value) { return PropertyParser.parseShellNew(this, value); }
+      parse: function(value) { return PropertyParser.parseShell(this, value); }
     },
     _deformation: {
       title: "Deformation properties"
@@ -4933,7 +5109,7 @@ class GroupWriter {
       completion: "3 1",
       dontWrite: undefined,
       write: function(value) { return PropertyWriter.writeDeform(value); },
-      parse: function(value) { return PropertyParser.parseDeformNew(this, value); }
+      parse: function(value) { return PropertyParser.parseDeform(this, value); }
     },
     warp: {
       name:'warp',
@@ -4945,7 +5121,7 @@ class GroupWriter {
       completion: "1 0.2",
       dontWrite: undefined,
       write: function(value) { return PropertyWriter.writeWarp(value); },
-      parse: function(value) { return PropertyParser.parseWarpNew(this, value); }
+      parse: function(value) { return PropertyParser.parseWarp(this, value); }
     },
     scatter: {
       name:'scatter',
@@ -4957,7 +5133,7 @@ class GroupWriter {
       completion: "0.35",
       dontWrite: "0",
       write: undefined,
-      parse: function(value) { return PropertyParser.parseFloatNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloat(this, value); }
     },
     _planar: {
       title: "Planar properties"
@@ -4965,51 +5141,51 @@ class GroupWriter {
     flatten: {
       name:'flatten',
       doc: "Flattens as if a part is cut off. Note: uses material bounds, not model bounds.",
-      format: "{ -x x +x -y y +y -z z +z | none }",
+      format: "{ -x >x x <x +x -y >y y <y +y -z >z z <z +z | none }",
       basic, lambert, phong, standard, physical, toon, matcap, normal,
       values: undefined,
       defaultValue: undefined,
       completion: "-y",
       dontWrite: undefined,
       write: function(value) { return `${Planar.toString(value)}`; },
-      parse: function(value) { return PropertyParser.parsePlanarPlanesNew(this, value); }
+      parse: function(value) { return PropertyParser.parsePlanarPlanes(this, value); }
       
     },
     clamp: {
       name:'clamp',
       doc: "Flattens with peripendicular sides. Note: uses material bounds, not model bounds.",
-      format: "{ -x x +x -y y +y -z z +z | none }",
+      format: "{ -x >x x <x +x -y >y y <y +y -z >z z <z +z | none }",
       basic, lambert, phong, standard, physical, toon, matcap, normal,
       values: undefined,
       defaultValue: undefined,
       completion: "-y",
       dontWrite: undefined,
       write: function(value) { return `${Planar.toString(value)}`; },
-      parse: function(value) { return PropertyParser.parsePlanarPlanesNew(this, value); }
+      parse: function(value) { return PropertyParser.parsePlanarPlanes(this, value); }
     },
     skip: {
       name:'skip',
       doc: "Faces are not created, do not influence other faces, do not have shells, etc. Note: uses material bounds, not model bounds.",
-      format: "{ -x x +x -y y +y -z z +z | none }",
+      format: "{ -x >x x <x +x -y >y y <y +y -z >z z <z +z | none }",
       basic, lambert, phong, standard, physical, toon, matcap, normal,
       values: undefined,
       defaultValue: undefined,
       completion: "-y",
       dontWrite: undefined,
       write: function(value) { return `${Planar.toString(value)}`; },
-      parse: function(value) { return PropertyParser.parsePlanarPlanesNew(this, value); }
+      parse: function(value) { return PropertyParser.parsePlanarPlanes(this, value); }
     },
     hide: {
       name:'hide',
       doc: "Faces are created, influence other faces, have shells, etc. but do not add ambient occlusion, and are not created in the mesh. Note: uses material bounds, not model bounds.",
-      format: "{ -x x +x -y y +y -z z +z | none }",
+      format: "{ -x >x x <x +x -y >y y <y +y -z >z z <z +z | none }",
       basic, lambert, phong, standard, physical, toon, matcap, normal,
       values: undefined,
       defaultValue: undefined,
       completion: "x y z",
       dontWrite: undefined,
       write: function(value) { return `${Planar.toString(value)}`; },
-      parse: function(value) { return PropertyParser.parsePlanarPlanesNew(this, value); }
+      parse: function(value) { return PropertyParser.parsePlanarPlanes(this, value); }
     },
     _shader: {
       title: "Shader properties"
@@ -5024,7 +5200,7 @@ class GroupWriter {
       completion: "false",
       dontWrite: undefined,
       write: undefined,
-      parse: function(value) { return PropertyParser.parseBooleanNew(this, value) }
+      parse: function(value) { return PropertyParser.parseBoolean(this, value) }
     },
     data: {
       name:'data',
@@ -5036,7 +5212,7 @@ class GroupWriter {
       completion: "data 0.5 0.5",
       dontWrite: undefined,
       write: function(value) { return PropertyWriter.writeVertexData(value); },
-      parse: function(value) { return PropertyParser.parseDataNew(this, value); }
+      parse: function(value) { return PropertyParser.parseData(this, value); }
     },
     _colors: {
       title: "Color properties"
@@ -5051,7 +5227,7 @@ class GroupWriter {
       completion: "true",
       dontWrite: "false",
       write: undefined,
-      parse: function(value) { return PropertyParser.parseBooleanNew(this, value) }
+      parse: function(value) { return PropertyParser.parseBoolean(this, value) }
     },
     colors: {
       name:'colors',
@@ -5063,7 +5239,7 @@ class GroupWriter {
       completion: "V:#F80",
       dontWrite: undefined,
       write: function(value) { return PropertyWriter.writeColors(value); },
-      parse: function(value) { return PropertyParser.parseColorsNew(this, value); }
+      parse: function(value) { return PropertyParser.parseColors(this, value); }
     }
   };
   
@@ -5131,6 +5307,10 @@ class MaterialReader {
     // Parse only the properties for this material type
     try {     
       for (const property in definitions) {
+        if (property.startsWith('_')) {
+          continue;
+        }
+          
         let def = definitions[property];      
         if (def[settings.type]) {
           let value = definitions[property].parse(parameters[property]);
@@ -5160,7 +5340,8 @@ class MaterialReader {
     // Since the mesh generator reverses the faces a front and back side material are the same base material
     settings.base.side = (settings.side === SVOX.DOUBLE) ? SVOX.DOUBLE : SVOX.FRONT; 
     
-    // SVOX.logWarning({ name:'TEST', message:MaterialWriter.write(settings) });
+    // Different atlas settings (e.g. a different cell from the atlas) still use the same material
+    settings.base.hasAtlas = Object.keys(settings).some(k => k.startsWith('atlas'));
     
     return settings;
   }
@@ -5286,6 +5467,35 @@ class MaterialReader {
         message: `(${modelName}) Reflectivity only works in combination with envmap in material '${settings.type}'.` 
       });          
     }
+    
+    let hasAtlas = settings.atlas ? true : false;
+    let atlasFaceCount = Object.keys(settings).filter(k => k.startsWith('atlas') && k !== 'atlas').length;
+    
+    if (atlasFaceCount > 0 && (!hasAtlas && atlasFaceCount !== 6)) {
+      throw {
+          name: 'SyntaxError',
+          message: `(${modelName}) A material must have atlas as fallback when atlas<face> is not defined for all faces.`
+      };    
+    }     
+
+    if ((hasAtlas || atlasFaceCount) && settings.mapTransform && settings.mapTransform.rotation !== 0) {
+      SVOX.logWarning({ 
+        name: 'MaterialWarning', 
+        message: `(${modelName}) Maptransform rotation is ignored when used in combination with atlas'.` 
+      });          
+    }
+
+    if ((hasAtlas || atlasFaceCount)  && settings.mapTransform && (
+        settings.mapTransform.uscale  !== Math.trunc(settings.mapTransform.uscale ) ||
+        settings.mapTransform.vscale  !== Math.trunc(settings.mapTransform.vscale ) ||
+        settings.mapTransform.uoffset !== Math.trunc(settings.mapTransform.uoffset) ||
+        settings.mapTransform.voffset !== Math.trunc(settings.mapTransform.voffset) )
+       ) {
+      throw {
+          name: 'SyntaxError',
+          message: `(${modelName}) Maptransform can only have integer values when used in combination with atlas.`
+      };    
+    }     
   }
 }
 
@@ -5675,8 +5885,8 @@ class VoxelWriter {
       allowUniform: true,
       completion: "10 10 10",
       dontWrite: undefined,
-      write: function(value) { return PropertyWriter.writeIntXYZ(value, true); },
-      parse: function(value) { return PropertyParser.parseXYZIntNew(this, value); }
+      write: function(value) { return PropertyWriter.writeXYZInt(value, true); },
+      parse: function(value) { return PropertyParser.parseXYZInt(this, value); }
     },
     scale: {
       name: 'scale',
@@ -5687,8 +5897,8 @@ class VoxelWriter {
       allowUniform: true,
       completion: "1 1 1",
       dontWrite: "1 1 1",
-      write: function(value) { return PropertyWriter.writeFloatXYZ(value, true); },
-      parse: function(value) { return PropertyParser.parseScaleNew(this, value); }
+      write: function(value) { return PropertyWriter.writeXYZFloat(value, true); },
+      parse: function(value) { return PropertyParser.parseScale(this, value); }
     },
     origin: {
       name: 'origin',
@@ -5699,7 +5909,7 @@ class VoxelWriter {
       completion: "-y",
       dontWrite: "x y z",
       write: function(value) { return `${Planar.toString(value)}`; },
-      parse: function(value) { return PropertyParser.parsePlanarPointNew(this, value); }
+      parse: function(value) { return PropertyParser.parsePlanarPoint(this, value); }
     },  
     resize: {
       name: 'resize',
@@ -5710,7 +5920,7 @@ class VoxelWriter {
       completion: "fit",
       dontWrite: undefined,
       write: undefined,
-      parse: function(value) { return PropertyParser.parseEnumNew(this, value); }
+      parse: function(value) { return PropertyParser.parseEnum(this, value); }
     },  
     rotation: {
       name: 'rotation',
@@ -5721,8 +5931,8 @@ class VoxelWriter {
       allowUniform: false,
       completion: "0 45 0",
       dontWrite: "0 0 0",
-      write: function(value) { return PropertyWriter.writeFloatXYZ(value, false); },
-      parse: function(value) { return PropertyParser.parseXYZFloatNew(this, value); }
+      write: function(value) { return PropertyWriter.writeXYZFloat(value, false); },
+      parse: function(value) { return PropertyParser.parseXYZFloat(this, value); }
     },
     position: {
       name: 'position',
@@ -5733,8 +5943,8 @@ class VoxelWriter {
       allowUniform: false,
       completion: "0 1 0",
       dontWrite: "0 0 0",
-      write: function(value) { return PropertyWriter.writeFloatXYZ(value, false); },
-      parse: function(value) { return PropertyParser.parseXYZFloatNew(this, value); }
+      write: function(value) { return PropertyWriter.writeXYZFloat(value, false); },
+      parse: function(value) { return PropertyParser.parseXYZFloat(this, value); }
     },  
     wireframe: {
       name: 'wireframe',
@@ -5745,7 +5955,7 @@ class VoxelWriter {
       completion: "true",
       dontWrite: undefined,
       write: undefined,
-      parse: function(value) { return PropertyParser.parseBooleanNew(this, value); }
+      parse: function(value) { return PropertyParser.parseBoolean(this, value); }
     },
     randomSeed: {
       name: 'randomseed',
@@ -5756,7 +5966,7 @@ class VoxelWriter {
       completion: "5408.5408",
       dontWrite: undefined,
       write: undefined,
-      parse: function(value) { return PropertyParser.parseFloatNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloat(this, value); }
     },      
     _planar: {
       title: "Planar properties"
@@ -5770,7 +5980,7 @@ class VoxelWriter {
       completion: "-y",
       dontWrite: undefined,
       write: function(value) { return `${Planar.toString(value)}`; },
-      parse: function(value) { return PropertyParser.parsePlanarPlanesNew(this, value); }
+      parse: function(value) { return PropertyParser.parsePlanarPlanes(this, value); }
     },
     clamp: {
       name: 'clamp',
@@ -5781,7 +5991,7 @@ class VoxelWriter {
       completion: "-y",
       dontWrite: undefined,
       write: function(value) { return `${Planar.toString(value)}`; },
-      parse: function(value) { return PropertyParser.parsePlanarPlanesNew(this, value); }
+      parse: function(value) { return PropertyParser.parsePlanarPlanes(this, value); }
     },
     skip: {
       name: 'skip',
@@ -5792,7 +6002,7 @@ class VoxelWriter {
       completion: "-y",
       dontWrite: undefined,
       write: function(value) { return `${Planar.toString(value)}`; },
-      parse: function(value) { return PropertyParser.parsePlanarPlanesNew(this, value); }
+      parse: function(value) { return PropertyParser.parsePlanarPlanes(this, value); }
     },
     hide: {
       name: 'hide',
@@ -5803,7 +6013,7 @@ class VoxelWriter {
       completion: "x y z",
       dontWrite: undefined,
       write: function(value) { return `${Planar.toString(value)}`; },
-      parse: function(value) { return PropertyParser.parsePlanarPlanesNew(this, value); }
+      parse: function(value) { return PropertyParser.parsePlanarPlanes(this, value); }
     },
     tile: {
       name: 'tile',
@@ -5814,7 +6024,7 @@ class VoxelWriter {
       completion: "x z",
       dontWrite: undefined,
       write: function(value) { return `${Planar.toString(value)}`; },
-      parse: function(value) { return PropertyParser.parsePlanarSidesNew(this, value); }
+      parse: function(value) { return PropertyParser.parsePlanarSides(this, value); }
     },  
     _effects: {
       title: "Effects properties"
@@ -5828,7 +6038,7 @@ class VoxelWriter {
       completion: "#400 5 0.5",
       dontWrite: undefined,
       write: function(value) { return PropertyWriter.writeAo(value); },
-      parse: function(value) { return PropertyParser.parseAoNew(this, value); }
+      parse: function(value) { return PropertyParser.parseAo(this, value); }
     },
     quickAo: {
       name: 'quickao',
@@ -5839,7 +6049,7 @@ class VoxelWriter {
       completion: "#400 0.5",
       dontWrite: undefined,
       write: function(value) { return PropertyWriter.writeQuickAo(value); },
-      parse: function(value) { return PropertyParser.parseQuickAoNew(this, value); }
+      parse: function(value) { return PropertyParser.parseQuickAo(this, value); }
     },
     aoSides: {
       name: 'aosides',
@@ -5850,7 +6060,7 @@ class VoxelWriter {
       completion: "-y",
       dontWrite: undefined,
       write: function(value) { return `${Planar.toString(value)}`; },
-      parse: function(value) { return PropertyParser.parsePlanarSidesNew(this, value); }
+      parse: function(value) { return PropertyParser.parsePlanarSides(this, value); }
     },    
     aoSamples: {
       name: 'aosamples',
@@ -5861,7 +6071,7 @@ class VoxelWriter {
       completion: "200",
       dontWrite: "50",
       write: undefined,
-      parse: function(value) { return PropertyParser.parseFloatNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloat(this, value); }
     },   
     shadowQuality: {
       name: 'shadowquality',
@@ -5872,7 +6082,7 @@ class VoxelWriter {
       completion: "low",
       dontWrite: undefined,
       write: undefined,
-      parse: function(value) { return PropertyParser.parseEnumNew(this, value); }
+      parse: function(value) { return PropertyParser.parseEnum(this, value); }
     },    
     shell: {
       name: 'shell',
@@ -5883,7 +6093,7 @@ class VoxelWriter {
       completion: "V 0.5 W 0.5",
       dontWrite: undefined,
       write: function(value) { return PropertyWriter.writeShell(value); },
-      parse: function(value) { return PropertyParser.parseShellNew(this, value); }
+      parse: function(value) { return PropertyParser.parseShell(this, value); }
     },
     _shader: {
       title: "Shader properties"
@@ -5897,7 +6107,7 @@ class VoxelWriter {
       completion: "false",
       dontWrite: "true",
       write: undefined,
-      parse: function(value) { return PropertyParser.parseBooleanNew(this, value); }
+      parse: function(value) { return PropertyParser.parseBoolean(this, value); }
     },
     data: {
       name: 'data',
@@ -5908,7 +6118,7 @@ class VoxelWriter {
       completion: "data 0.5 0.5",
       dontWrite: undefined,
       write: function(value) { return PropertyWriter.writeVertexData(value); },
-      parse: function(value) { return PropertyParser.parseDataNew(this, value); }
+      parse: function(value) { return PropertyParser.parseData(this, value); }
     },
     _shape: {
       title: "Shape properties"
@@ -5922,11 +6132,11 @@ class VoxelWriter {
       completion: "cylindery",
       dontWrite: undefined,
       write: undefined,
-      parse: function(value) { return PropertyParser.parseEnumNew(this, value); }
+      parse: function(value) { return PropertyParser.parseEnum(this, value); }
     },    
     _scaleMeta: {
       meta: "scale<axis><over>",
-      title: "Linear interpolated scale.",
+      title: "Linear interpolated scale",
       doc: "Linear interpolated scale. E.g. scalexy = 1 1 0 scales x over y like a house. Is not applied to nested groups. When textures are distored use simplify = false.\nOptions: scaleyx, scalezx, scalexy, scalezy, scalexz, scaleyz",
       format: "scale<axis><over> = <scale0> ... <scaleN>"
     },     
@@ -5940,7 +6150,7 @@ class VoxelWriter {
       completion: "1.5 0.5 1.5",
       dontWrite: undefined,
       write: function(value) { return value.join(' '); },
-      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloatArray(this, value); }
     },     
     scaleZX: {
       name: 'scalezx',
@@ -5952,7 +6162,7 @@ class VoxelWriter {
       completion: "1.5 0.5 1.5",
       dontWrite: undefined,
       write: function(value) { return value.join(' '); },
-      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloatArray(this, value); }
     },
     scaleXY: {
       name: 'scalexy',
@@ -5964,7 +6174,7 @@ class VoxelWriter {
       completion: "1.5 0.5 1.5",
       dontWrite: undefined,
       write: function(value) { return value.join(' '); },
-      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloatArray(this, value); }
     },    
     scaleZY: {
       name: 'scalezy',
@@ -5976,7 +6186,7 @@ class VoxelWriter {
       completion: "1.5 0.5 1.5",
       dontWrite: undefined,
       write: function(value) { return value.join(' '); },
-      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloatArray(this, value); }
     },       
     scaleXZ: {
       name: 'scalexz',
@@ -5988,7 +6198,7 @@ class VoxelWriter {
       completion: "1.5 0.5 1.5",
       dontWrite: undefined,
       write: function(value) { return value.join(' '); },
-      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloatArray(this, value); }
     },       
     scaleYZ: {
       name: 'scaleyz',
@@ -6000,11 +6210,11 @@ class VoxelWriter {
       completion: "1.5 0.5 1.5",
       dontWrite: undefined,
       write: function(value) { return value.join(' '); },
-      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloatArray(this, value); }
     },     
     _smoothScaleMeta: {
       meta: "smoothscale<axis><over>",
-      title: "Smooth interpolated scale.",
+      title: "Smooth interpolated scale",
       doc: "Smooth interpolated scale. E.g. scalexy = 1 1 0 scales x over y like a house. Is not applied to nested groups. When textures are distored use simplify = false.\nOptions: smoothscaleyx, smoothscalezx, smoothscalexy, smoothscalezy, smoothscalexz, smoothscaleyz",
       format: "smoothscale<axis><over> = <scale0> ... <scaleN>"
     },     
@@ -6018,7 +6228,7 @@ class VoxelWriter {
       completion: "1.5 0.5 1.5",
       dontWrite: undefined,
       write: function(value) { return value.join(' '); },
-      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloatArray(this, value); }
     },     
     smoothScaleZX: {
       name: 'smoothscalezx',
@@ -6030,7 +6240,7 @@ class VoxelWriter {
       completion: "1.5 0.5 1.5",
       dontWrite: undefined,
       write: function(value) { return value.join(' '); },
-      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloatArray(this, value); }
     },
     smoothScaleXY: {
       name: 'smoothscalexy',
@@ -6042,7 +6252,7 @@ class VoxelWriter {
       completion: "1.5 0.5 1.5",
       dontWrite: undefined,
       write: function(value) { return value.join(' '); },
-      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloatArray(this, value); }
     },    
     smoothScaleZY: {
       name: 'smoothscalezy',
@@ -6054,7 +6264,7 @@ class VoxelWriter {
       completion: "1.5 0.5 1.5",
       dontWrite: undefined,
       write: function(value) { return value.join(' '); },
-      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloatArray(this, value); }
     },       
     smoothScaleXZ: {
       name: 'smoothscalexz',
@@ -6066,7 +6276,7 @@ class VoxelWriter {
       completion: "1.5 0.5 1.5",
       dontWrite: undefined,
       write: function(value) { return value.join(' '); },
-      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloatArray(this, value); }
     },       
     smoothScaleYZ: {
       name: 'smoothscaleyz',
@@ -6078,12 +6288,12 @@ class VoxelWriter {
       completion: "1.5 0.5 1.5",
       dontWrite: undefined,
       write: function(value) { return value.join(' '); },
-      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloatArray(this, value); }
     },     
     _rotateMeta: {
       name: 'id',
       meta: "rotate<over>",
-      title: "Linear interpolated rotate.",
+      title: "Linear interpolated rotate",
       doc: "Linear interpolated rotate. E.g. rotatey = 0 90 180 twists around in the y direction. Is not applied to nested groups. Without deform usually combined with lighting = sides.\nOptions: rotatex, rotatey, rotatez",
       format: "rotate<over> = <degrees0> ... <degreesN>"
     },                 
@@ -6097,7 +6307,7 @@ class VoxelWriter {
       completion: "0 90 0",
       dontWrite: undefined,
       write: function(value) { return value.join(' '); },
-      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloatArray(this, value); }
     },     
     rotateY: {
       name: 'rotatey',
@@ -6109,7 +6319,7 @@ class VoxelWriter {
       completion: "0 90 0",
       dontWrite: undefined,
       write: function(value) { return value.join(' '); },
-      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloatArray(this, value); }
     },     
     rotateZ: {
       name: 'rotatez',
@@ -6121,11 +6331,11 @@ class VoxelWriter {
       completion: "0 90 0",
       dontWrite: undefined,
       write: function(value) { return value.join(' '); },
-      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloatArray(this, value); }
     },     
     _smoothRotateMeta: {
       meta: "smoothrotate<axis><over>",
-      title: "Smooth interpolated rotate.",
+      title: "Smooth interpolated rotate",
       doc: "Smooth interpolated rotate. E.g. rotatey = 0 90 180 twists around in the y direction. Is not applied to nested groups. Without deform usually combined with lighting = sides.\nOptions: smoothrotatex, smoothrotatey, smoothrotatez",
       format: "smoothrotate<axis><over> = <degrees0> ... <degreesN>"
     },                 
@@ -6139,7 +6349,7 @@ class VoxelWriter {
       completion: "0 90 0",
       dontWrite: undefined,
       write: function(value) { return value.join(' '); },
-      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloatArray(this, value); }
     },     
     smoothRotateY: {
       name: 'smoothrotatey',
@@ -6151,7 +6361,7 @@ class VoxelWriter {
       completion: "0 90 0",
       dontWrite: undefined,
       write: function(value) { return value.join(' '); },
-      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloatArray(this, value); }
     },     
     smoothRotateZ: {
       name: 'smoothrotatez',
@@ -6163,7 +6373,7 @@ class VoxelWriter {
       completion: "0 90 0",
       dontWrite: undefined,
       write: function(value) { return value.join(' '); },
-      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloatArray(this, value); }
     },     
     _translateMeta: {
       meta: "translate<axis><over>",
@@ -6181,7 +6391,7 @@ class VoxelWriter {
       completion: "-1 1 -1",
       dontWrite: undefined,
       write: function(value) { return value.join(' '); },
-      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloatArray(this, value); }
     },     
     translateZX: {
       name: 'translatezx',
@@ -6193,7 +6403,7 @@ class VoxelWriter {
       completion: "-1 1 -1",
       dontWrite: undefined,
       write: function(value) { return value.join(' '); },
-      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloatArray(this, value); }
     },     
     translateXY: {
       name: 'translatexy',
@@ -6205,7 +6415,7 @@ class VoxelWriter {
       completion: "-1 1 -1",
       dontWrite: undefined,
       write: function(value) { return value.join(' '); },
-      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloatArray(this, value); }
     },
     translateZY: {
       name: 'translatezy',
@@ -6217,7 +6427,7 @@ class VoxelWriter {
       completion: "-1 1 -1",
       dontWrite: undefined,
       write: function(value) { return value.join(' '); },
-      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloatArray(this, value); }
     },       
     translateXZ: {
       name: 'translatexz',
@@ -6229,7 +6439,7 @@ class VoxelWriter {
       completion: "-1 1 -1",
       dontWrite: undefined,
       write: function(value) { return value.join(' '); },
-      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloatArray(this, value); }
     },       
     translateYZ: {
       name: 'translateyz',
@@ -6241,7 +6451,7 @@ class VoxelWriter {
       completion: "-1 1 -1",
       dontWrite: undefined,
       write: function(value) { return value.join(' '); },
-      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloatArray(this, value); }
     },
     _smoothTranslateMeta: {
       meta: "smoothtranslate<axis><over>",
@@ -6259,7 +6469,7 @@ class VoxelWriter {
       completion: "-1 1 -1",
       dontWrite: undefined,
       write: function(value) { return value.join(' '); },
-      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloatArray(this, value); }
     },     
     smoothTranslateZX: {
       name: 'smoothtranslatezx',
@@ -6271,7 +6481,7 @@ class VoxelWriter {
       completion: "-1 1 -1",
       dontWrite: undefined,
       write: function(value) { return value.join(' '); },
-      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloatArray(this, value); }
     },     
     smoothTranslateXY: {
       name: 'smoothtranslatexy',
@@ -6283,7 +6493,7 @@ class VoxelWriter {
       completion: "-1 1 -1",
       dontWrite: undefined,
       write: function(value) { return value.join(' '); },
-      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloatArray(this, value); }
     },
     smoothTranslateZY: {
       name: 'smoothtranslatezy',
@@ -6295,7 +6505,7 @@ class VoxelWriter {
       completion: "-1 1 -1",
       dontWrite: undefined,
       write: function(value) { return value.join(' '); },
-      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloatArray(this, value); }
     },       
     smoothTranslateXZ: {
       name: 'smoothtranslatexz',
@@ -6307,7 +6517,7 @@ class VoxelWriter {
       completion: "-1 1 -1",
       dontWrite: undefined,
       write: function(value) { return value.join(' '); },
-      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloatArray(this, value); }
     },       
     smoothTranslateYZ: {
       name: 'smoothtranslateyz',
@@ -6319,7 +6529,7 @@ class VoxelWriter {
       completion: "-1 1 -1",
       dontWrite: undefined,
       write: function(value) { return value.join(' '); },
-      parse: function(value) { return PropertyParser.parseFloatArrayNew(this, value); }
+      parse: function(value) { return PropertyParser.parseFloatArray(this, value); }
     },
     _bendMeta: {
       meta: "bend<axis><over>",
@@ -6338,7 +6548,7 @@ class VoxelWriter {
       completion: "90 10",
       dontWrite: undefined,
       write: function(value) { return `${value.x} ${value.y}`; },
-      parse: function(value) { return PropertyParser.parseXYFloatNew(this, value); }
+      parse: function(value) { return PropertyParser.parseXYFloat(this, value); }
     },     
     bendZX: {
       name: 'bendzx',
@@ -6351,7 +6561,7 @@ class VoxelWriter {
       completion: "90 10",
       dontWrite: undefined,
       write: function(value) { return `${value.x} ${value.y}`; },
-      parse: function(value) { return PropertyParser.parseXYFloatNew(this, value); }
+      parse: function(value) { return PropertyParser.parseXYFloat(this, value); }
     },
     bendXY: {
       name: 'bendxy',
@@ -6364,7 +6574,7 @@ class VoxelWriter {
       completion: "90 10",
       dontWrite: undefined,
       write: function(value) { return `${value.x} ${value.y}`; },
-      parse: function(value) { return PropertyParser.parseXYFloatNew(this, value); }
+      parse: function(value) { return PropertyParser.parseXYFloat(this, value); }
     },    
     bendZY: {
       name: 'bendzy',
@@ -6377,7 +6587,7 @@ class VoxelWriter {
       completion: "90 10",
       dontWrite: undefined,
       write: function(value) { return `${value.x} ${value.y}`; },
-      parse: function(value) { return PropertyParser.parseXYFloatNew(this, value); }
+      parse: function(value) { return PropertyParser.parseXYFloat(this, value); }
     },       
     bendXZ: {
       name: 'bendxz',
@@ -6390,7 +6600,7 @@ class VoxelWriter {
       completion: "90 10",
       dontWrite: undefined,
       write: function(value) { return `${value.x} ${value.y}`; },
-      parse: function(value) { return PropertyParser.parseXYFloatNew(this, value); }
+      parse: function(value) { return PropertyParser.parseXYFloat(this, value); }
     },       
     bendYZ: {
       name: 'bendyz',
@@ -6403,7 +6613,7 @@ class VoxelWriter {
       completion: "90 10",
       dontWrite: undefined,
       write: function(value) { return `${value.x} ${value.y}`; },
-      parse: function(value) { return PropertyParser.parseXYFloatNew(this, value); }
+      parse: function(value) { return PropertyParser.parseXYFloat(this, value); }
     }
   };
   
@@ -6521,13 +6731,49 @@ class ModelReader {
         if (model.colors[color.id]) {
           SVOX.logWarning({
             name: 'ModelWarning',
-            message: `(${modelName}) Duplicate color id '${color.id}' found.`,
+            message: `(${modelName}) Duplicate color id '${color.id}' found.`
           });
         }    
           
         model.colors[color.id] = color;
       });
     });
+  
+    // Check for all materials the proper use of cube / non cube textures
+    model.materials.forEach(function(material) {             
+      material.usesCubeTexture    = false;
+      material.usesNonCubeTexture = false;
+      
+      let matSettings = material.settings;
+      
+      if (matSettings.matcap && model.textures.getById(matSettings.matcap).cube) {
+        SVOX.logWarning({
+          name: 'ModelWarning',
+          message: `(${modelName}) Matcap should not use cube texture '${matSettings.matcap}'.`
+        });        
+      }
+      
+      for (var property in matSettings) {        
+        if (property === 'map' || property.endsWith('Map')) {
+          material.usesCubeTexture    = material.usesCubeTexture    || model.textures.getById(matSettings[property]).cube;
+          material.usesNonCubeTexture = material.usesNonCubeTexture || !model.textures.getById(matSettings[property]).cube;
+        }
+      }    
+      
+      if (material.usesCubeTexture && material.usesNonCubeTexture) {
+        SVOX.logWarning({
+          name: 'ModelWarning',
+          message: `(${modelName}) Materials should not use cube and non cube textures at the same time.`
+        });        
+      }
+      
+      if (material.usesCubeTexture && material.mapTransform.uscale !== -1) {
+        SVOX.logWarning({
+          name: 'ModelWarning',
+          message: `(${modelName}) Materials using cube textures should not use maptransform at the same time.`
+        });        
+      }
+    }, this);
     
     // Ensure the material data properties matches the model data property
     model.materials.forEach(function(material) {             
@@ -7003,6 +7249,7 @@ class ModelWriter {
       });
       
       model.materials.forEach((material) => {
+        
         if (material.warp) {
           material.warp.frequency /= repeat;
           material.warp.amplitude  *= repeat;
@@ -7010,16 +7257,26 @@ class ModelWriter {
           material.warp.amplitudeY *= repeat;
           material.warp.amplitudeZ *= repeat;
         }
+        
         if (material.ao && material.ao.maxDistance) {
           material.ao.maxDistance *= repeat; 
         }
-        if (material.settings.mapTransform) {
+                
+        if (material.settings.atlas) {
+          material.settings.mapTransform.uscale = Math.abs(material.settings.mapTransform.uscale * repeat);
+          material.settings.mapTransform.vscale = Math.abs(material.settings.mapTransform.vscale * repeat);
+          material.settings.mapTransform.uoffset *= repeat;
+          material.settings.mapTransform.voffset *= repeat;          
+        }
+        else {
           if (material.settings.mapTransform.uscale !== -1) material.settings.mapTransform.uscale *= repeat;
           if (material.settings.mapTransform.vscale !== -1) material.settings.mapTransform.vscale *= repeat;
         }
+        
         if (material.settings.deform) {
           material.settings.deform.count += material.settings.deform.count * (repeat * repeat);
         }
+        
         if (material.shell) {
           for (let s=0; s<material.shell.length; s++) {
             material.shell[s].distance *= repeat;
@@ -8608,7 +8865,8 @@ class DirectionalTransformer {
   
   static _interpolateLinear(values, d) {
       if(values.length < 2) throw new Error("Interpolation arrray must contain at least 2 values.");
-      if(d < 0 || d > 1) throw new Error("Interpolation value d must be a float between 0 and 1.");
+      if(d < -0.0001 || d > 1.0001) throw new Error("Interpolation value d must be a float between 0 and 1.");
+      d = Math.max(0, Math.min(1,d));
 
       let index = (values.length - 1) * d;
 
@@ -9056,7 +9314,7 @@ class NormalsCalculator {
 }
 
 // =====================================================
-// ../smoothvoxels/meshgenerator/octreeNEW.js
+// ../smoothvoxels/meshgenerator/octree.js
 // =====================================================
 
 class Octree {
@@ -10031,113 +10289,214 @@ class ColorCombiner {
 // ../smoothvoxels/meshgenerator/uvassigner.js
 // =====================================================
 
-class UVAssigner {
-  
-  static assignUVs(model) {
+class UVAssigner {   
     
-    let size         = { x:0, y:0 };
-    let mapTransform = { x:0, y:0 };
+    static projectVertexTo2D(vertex, direction, center) {
+      // Normalize the direction vector
+      let dirLen = Math.sqrt(direction.x * direction.x + direction.y * direction.y + direction.z * direction.z);
+      let dirNorm = {
+          x: direction.x / dirLen,
+          y: direction.y / dirLen,
+          z: direction.z / dirLen
+      }
 
-    model.voxels.forEach(function(voxel) {
+      // Calculate the projected vertex
+      let dotProduct = (vertex.x - center.x) * dirNorm.x + 
+                       (vertex.y - center.y) * dirNorm.y + 
+                       (vertex.z - center.z) * dirNorm.z;
+      let projectedVertex = {
+          x: (vertex.x - center.x) - dotProduct * dirNorm.x,
+          y: (vertex.y - center.y) - dotProduct * dirNorm.y,
+          z: (vertex.z - center.z) - dotProduct * dirNorm.z
+      }
 
-      // We're always calculating UV's since even when the voxel does not use them, the shell might need them        
-      let cube = false;
-      let uscale = 1;
-      let vscale = 1;
-      let offsetU = 0;
-      let offsetV = 0;
-      let bounds = voxel.group.bounds;
-      let boundsSize = Math.max(voxel.group.bounds.size.x, voxel.group.bounds.size.y, voxel.group.bounds.size.z)-1;
-
-      let material = voxel.material.settings;
-      
-      if (!cube && material.mapTransform && material.mapTransform.uscale !== -1) {
-        mapTransform.uscale = material.mapTransform.uscale;
-        mapTransform.vscale = material.mapTransform.vscale;
+      // Determine the projection plane and return UV accordingly
+      if (dirNorm.x > 0 && dirNorm.x >= Math.abs(dirNorm.y) && dirNorm.x >= Math.abs(dirNorm.z)) {
+          // Projected onto yz plane
+          return { u: -projectedVertex.z, v: projectedVertex.y };
+      }
+      else if (-dirNorm.x >= Math.abs(dirNorm.y) && -dirNorm.x >= Math.abs(dirNorm.z)) {
+          // Projected onto yz plane
+          return { u: projectedVertex.z, v: projectedVertex.y };
+      }
+      else if(dirNorm.z > 0 && dirNorm.z >= Math.abs(dirNorm.x) && dirNorm.z >= Math.abs(dirNorm.y)){
+          // Projected onto xy plane
+          return { u: projectedVertex.x, v: projectedVertex.y };
+      }
+      else if(-dirNorm.z >= Math.abs(dirNorm.x) && -dirNorm.z >= Math.abs(dirNorm.y)){
+          // Projected onto xy plane
+          return { u: -projectedVertex.x, v: projectedVertex.y };
+      }
+      else if(dirNorm.y > 0){
+          // Projected onto zx plane
+          return { u: projectedVertex.x, v: -projectedVertex.z };
       }
       else {
-        mapTransform.uscale = 1;
-        mapTransform.vscale = 1;
+          // Projected onto zx plane
+          return { u: projectedVertex.x, v: projectedVertex.z };
       }
-      
-      let mapId = material.map || material.bumpMap || material.normalMap || material.roughnessMap || material.metalnessMap ||  
-                  material.displacementMap || material.alphaMap || material.emissiveMap ||  
-                  material.thicknessMap || material.transmissionMap || material.specularColorMap || material.specularIntensityMap ||
-                  material.specularMap || material.clearcoatMap || material.clearcoatNormalMap || material.clearcoatRoughnessMap;
-      
-      if (mapId) {
-        let texture = model.textures.getById(mapId);
-        let borderOffset = texture?.borderOffset ?? 0.5;
-        if (texture?.size) {
-          size.x = texture.size.x;
-          size.y = texture.size.y;
-        }
-        else {
-          size.x = 1024;
-          size.y = 1024;
-        }
-        offsetU = 1 / size.x * borderOffset * mapTransform.uscale;  // Pixel offset to prevent bleeding
-        offsetV = 1 / size.y * borderOffset * mapTransform.vscale;  
+  }
+  
+  static getVoxelContext(model, voxel, ctx) {
+   
+    // The context object is reused instead of a new context returned for each voxel
+    ctx.settings = voxel.material.settings;
+    ctx.hasAtlas = Object.keys(ctx.settings).some(k => k.startsWith('atlas'));
+    ctx.mapProject = ctx.settings.mapProject;
+    ctx.cube = false;
+    ctx.uscale = 1;
+    ctx.vscale = 1;
+    ctx.uoffset = 0;
+    ctx.voffset = 0;
+    ctx.borderU = 0;
+    ctx.borderV = 0;
+    ctx.bounds = voxel.group.bounds;
+    ctx.boundsSize = Math.max(ctx.bounds.size.x, ctx.bounds.size.y, ctx.bounds.size.z)-1;
 
-        if ((material.map && model.textures.getById(material.map).cube) || 
-            (material.normalMap && model.textures.getById(material.normalMap).cube) ||
-            (material.bumpMap && model.textures.getById(material.bumpMap).cube) ||
-            (material.roughnessMap && model.textures.getById(material.roughnessMap).cube) ||
-            (material.metalnessMap && model.textures.getById(material.metalnessMap).cube) ||
-            (material.displacementMap && model.textures.getById(material.displacementMap).cube) ||
-            (material.alphaMap && model.textures.getById(material.alphaMap).cube) ||
-            (material.emissiveMap && model.textures.getById(material.emissiveMap).cube) ||
-            (material.thicknessMap && model.textures.getById(material.thicknessMap).cube) || 
-            (material.transmissionMap && model.textures.getById(material.transmissionMap).cube) ||
-            (material.specularColorMap && model.textures.getById(material.specularColorMap).cube) ||
-            (material.specularIntensityMap && model.textures.getById(material.specularIntensityMap).cube) ||
-            (material.specularMap && model.textures.getById(material.specularMap).cube) ||
-            (material.clearcoatMap && model.textures.getById(material.clearcoatMap).cube) || 
-            (material.clearcoatNormalMap && model.textures.getById(material.clearcoatNormalMap).cube) || 
-            (material.clearcoatRoughnessMap && model.textures.getById(material.clearcoatRoughnessMap).cube)) {
-          cube = true;
-          uscale = 1 / 4 / boundsSize;  // The cube texture is 4 x 2
-          vscale = 1 / 2 / boundsSize;
-          offsetU = 4 / size.x * borderOffset * boundsSize;  // Pixel offset to prevent bleeding
-          offsetV = 2 / size.y * borderOffset * boundsSize;  
+    let mapId = ctx.settings.map || ctx.settings.normalMap || ctx.settings.bumpMap || ctx.settings.roughnessMap || ctx.settings.metalnessMap ||  
+                ctx.settings.displacementMap || ctx.settings.alphaMap || ctx.settings.emissiveMap ||  
+                ctx.settings.thicknessMap || ctx.settings.transmissionMap || ctx.settings.specularColorMap || ctx.settings.specularIntensityMap ||
+                ctx.settings.specularMap || ctx.settings.clearcoatMap || ctx.settings.clearcoatNormalMap || ctx.settings.clearcoatRoughnessMap;
+
+    if (mapId) {
+      let texture = model.textures.getById(mapId);
+      let borderOffset = texture?.borderOffset ?? 0.5;
+      let textureWidth  = texture?.size?.x ?? 1024;
+      let textureHeight = texture?.size?.y ?? 1024;
+
+      if (ctx.hasAtlas) {
+        ctx.cube = false;
+        if (ctx.settings.mapTransform) {
+          if (ctx.settings.mapTransform.uscale !== -1 && ctx.settings.mapTransform.vscale !== -1) {
+            ctx.uscale  = ctx.settings.mapTransform.uscale  ?? 1;
+            ctx.vscale  = ctx.settings.mapTransform.vscale  ?? 1;
+          }
+          ctx.uoffset = ctx.settings.mapTransform.uoffset ?? 0;
+          ctx.voffset = ctx.settings.mapTransform.voffset ?? 0;
         }
+        ctx.borderU = 1 / textureWidth  * borderOffset;  // Pixel offset to prevent bleeding
+        ctx.borderV = 1 / textureHeight * borderOffset;
       }
+      else if (voxel.material.usesCubeTexture) {
+        ctx.cube = true;
+        ctx.uscale = 1 / 4 / ctx.boundsSize;  // The cube texture is 4 x 2
+        ctx.vscale = 1 / 2 / ctx.boundsSize;
+        ctx.borderU = 4 / textureWidth  * borderOffset * ctx.boundsSize;  // Pixel offset to prevent bleeding
+        ctx.borderV = 2 / textureHeight * borderOffset * ctx.boundsSize;  
+      }
+      else {
+        ctx.borderU = 1 / textureWidth  * borderOffset;  // Pixel offset to prevent bleeding
+        ctx.borderV = 1 / textureHeight * borderOffset;            
+      }
+    }
+    
+    if (!ctx.cube && ctx.settings.mapTransform && ctx.settings.mapTransform.uscale !== -1) {
+      ctx.borderU *= ctx.settings.mapTransform.uscale;
+      ctx.borderV *= ctx.settings.mapTransform.vscale;
+    }
+  }  
+  
+  static assignUVs(model) {
 
+    // We're always calculating UV's since even when the voxel does not use them, the shell might need them   
+    
+    // Reuse the voxel context object    
+    let ctx = { settings: undefined, hasAtlas:undefined, mapProject:undefined, cube:undefined, 
+                uscale:undefined, vscale:undefined, uoffset:undefined, voffset:undefined, 
+                borderU:undefined, borderV:undefined, bounds:undefined, boundsSize:undefined 
+              };
+
+    model.voxels.forEach(function(voxel) {
+      
+      // First determine the context for this voxel / material
+      this.getVoxelContext(model, voxel, ctx);
+      
       for (let faceName in voxel.faces) {
         let face = voxel.faces[faceName];
 
         let uvDefs = SVOX._FACEUVDEFS[faceName];
         face.uv = [];
         
-        let u = voxel[uvDefs.udir] - bounds[uvDefs.uminbound];
-        let v = voxel[uvDefs.vdir] - bounds[uvDefs.vminbound];
+        if (ctx.hasAtlas) {
+          // Determine the start uv for the atlas cell depending on the voxel
+          let u = Math.abs(Math.floor((voxel[uvDefs.udir] - ctx.bounds[uvDefs.uminbound] - (uvDefs.usign-1)/4 + uvDefs.usign*((ctx.uoffset+ctx.uscale)%ctx.uscale)) % ctx.uscale));
+          let v = Math.abs(Math.floor((voxel[uvDefs.vdir] - ctx.bounds[uvDefs.vminbound] - (uvDefs.vsign-1)/4 + uvDefs.vsign*((ctx.voffset+ctx.vscale)%ctx.vscale)) % ctx.vscale));
+          
+          //let u = Math.abs(Math.floor((voxel[uvDefs.udir] - (uvDefs.usign-1)/4 + uvDefs.usign*((ctx.uoffset+ctx.uscale)%ctx.uscale)) % ctx.uscale));
+          //let v = Math.abs(Math.floor((voxel[uvDefs.vdir] - (uvDefs.vsign-1)/4 + uvDefs.vsign*((ctx.voffset+ctx.vscale)%ctx.vscale)) % ctx.vscale));
 
-        // At the edges of planes of adjacent voxels with the same material, add a slight offset to prevent pixel bleed from texture wrap around / the next tile in a texture atlas
-        let offsetTop    = this.adjacentVoxelIsDifferentMaterial(model, voxel, uvDefs.top   ) ? offsetV : 0;
-        let offsetRight  = this.adjacentVoxelIsDifferentMaterial(model, voxel, uvDefs.right ) ? offsetU : 0;
-        let offsetBottom = this.adjacentVoxelIsDifferentMaterial(model, voxel, uvDefs.bottom) ? offsetV : 0;
-        let offsetLeft   = this.adjacentVoxelIsDifferentMaterial(model, voxel, uvDefs.left  ) ? offsetU : 0;
+          // Determine the start and end uv's scaled between 0 and 1
+          let u0 = (u             )/ctx.uscale;
+          let u1 = (u+uvDefs.usign)/ctx.uscale;
+          let v0 = (v             )/ctx.vscale;
+          let v1 = (v+uvDefs.vsign)/ctx.vscale;
+          
+          let u0Offset = 0;
+          let u1Offset = 0;
+          let v0Offset = 0;
+          let v1Offset = 0;
+          
+          // Prevent texture bleeding between cells
+          if (u0 < 0.001) u0Offset =  ctx.borderU;
+          if (u0 > 0.999) u0Offset = -ctx.borderU;
+          if (u1 < 0.001) u1Offset =  ctx.borderU;
+          if (u1 > 0.999) u1Offset = -ctx.borderU;
+          if (v0 < 0.001) v0Offset =  ctx.borderV;
+          if (v0 > 0.999) v0Offset = -ctx.borderV;
+          if (v1 < 0.001) v1Offset =  ctx.borderV;
+          if (v1 > 0.999) v1Offset = -ctx.borderV;
 
-        let uLeft   = (cube ? uvDefs.cubeu : 0) + (u + offsetLeft     ) * uscale * uvDefs.usign;
-        let uRight  = (cube ? uvDefs.cubeu : 0) + (u - offsetRight + 1) * uscale * uvDefs.usign;
-        let vTop    = (cube ? uvDefs.cubev : 0) + (v - offsetTop   + 1) * vscale * uvDefs.vsign;
-        let vBottom = (cube ? uvDefs.cubev : 0) + (v + offsetBottom   ) * vscale * uvDefs.vsign;
- 
-        if (!cube) {
-          if (uLeft + uRight < 0) {
-            uLeft  = -uLeft;
-            uRight = -uRight;
-          }
-          if (vTop + vBottom < 0) {
-            vTop    = -vTop;
-            vBottom = -vBottom;
-          }
-        } 
-        
-        face.uv[uvDefs.order[0]] = { u:uLeft,  v:vBottom }; 
-        face.uv[uvDefs.order[1]] = { u:uLeft,  v:vTop    }; 
-        face.uv[uvDefs.order[2]] = { u:uRight, v:vTop    }; 
-        face.uv[uvDefs.order[3]] = { u:uRight, v:vBottom };
+          // Show the correct cell in the grid 
+          let atlas = ctx.settings['atlas' + faceName.toUpperCase()] ?? ctx.settings.atlas;
+          face.uv[uvDefs.order[0]] = { u:(u0+atlas.cellX)/atlas.gridX+u0Offset, v:(v0+atlas.cellY)/atlas.gridY+v0Offset };
+          face.uv[uvDefs.order[1]] = { u:(u0+atlas.cellX)/atlas.gridX+u0Offset, v:(v1+atlas.cellY)/atlas.gridY+v1Offset };
+          face.uv[uvDefs.order[2]] = { u:(u1+atlas.cellX)/atlas.gridX+u1Offset, v:(v1+atlas.cellY)/atlas.gridY+v1Offset };
+          face.uv[uvDefs.order[3]] = { u:(u1+atlas.cellX)/atlas.gridX+u1Offset, v:(v0+atlas.cellY)/atlas.gridY+v0Offset };
+        }
+        else if (ctx.mapProject) { 
+          let center = voxel.group.vertexBounds.getCenter();
+
+          let v0 = this.projectVertexTo2D(face.vertices[0], ctx.mapProject, center);
+          let v1 = this.projectVertexTo2D(face.vertices[1], ctx.mapProject, center);
+          let v2 = this.projectVertexTo2D(face.vertices[2], ctx.mapProject, center);
+          let v3 = this.projectVertexTo2D(face.vertices[3], ctx.mapProject, center);
+
+          face.uv[0] = { u:v0.u + 0.5 * ctx.boundsSize, v:v0.v + 0.5 * ctx.boundsSize }; 
+          face.uv[1] = { u:v1.u + 0.5 * ctx.boundsSize, v:v1.v + 0.5 * ctx.boundsSize }; 
+          face.uv[2] = { u:v2.u + 0.5 * ctx.boundsSize, v:v2.v + 0.5 * ctx.boundsSize }; 
+          face.uv[3] = { u:v3.u + 0.5 * ctx.boundsSize, v:v3.v + 0.5 * ctx.boundsSize };
+        }
+        else {        
+          let u = voxel[uvDefs.udir] - ctx.bounds[uvDefs.uminbound];
+          let v = voxel[uvDefs.vdir] - ctx.bounds[uvDefs.vminbound];
+
+          // At the edges of planes of adjacent voxels with the same material, add a slight offset to prevent pixel bleed from texture wrap around / the next tile in a texture atlas
+          let offsetTop    = this.adjacentVoxelIsDifferentMaterial(model, voxel, uvDefs.top   ) ? ctx.borderV : 0;
+          let offsetRight  = this.adjacentVoxelIsDifferentMaterial(model, voxel, uvDefs.right ) ? ctx.borderU : 0;
+          let offsetBottom = this.adjacentVoxelIsDifferentMaterial(model, voxel, uvDefs.bottom) ? ctx.borderV : 0;
+          let offsetLeft   = this.adjacentVoxelIsDifferentMaterial(model, voxel, uvDefs.left  ) ? ctx.borderU : 0;
+
+          let uLeft   = (ctx.cube ? uvDefs.cubeu : 0) + (u + offsetLeft     ) * ctx.uscale * uvDefs.usign;
+          let uRight  = (ctx.cube ? uvDefs.cubeu : 0) + (u - offsetRight + 1) * ctx.uscale * uvDefs.usign;
+          let vTop    = (ctx.cube ? uvDefs.cubev : 0) + (v - offsetTop   + 1) * ctx.vscale * uvDefs.vsign;
+          let vBottom = (ctx.cube ? uvDefs.cubev : 0) + (v + offsetBottom   ) * ctx.vscale * uvDefs.vsign;
+
+          if (!ctx.cube) {
+            if (uLeft + uRight < 0) {
+              uLeft  = -uLeft;
+              uRight = -uRight;
+            }
+            if (vTop + vBottom < 0) {
+              vTop    = -vTop;
+              vBottom = -vBottom;
+            }
+          } 
+
+          face.uv[uvDefs.order[0]] = { u:uLeft,  v:vBottom };
+          face.uv[uvDefs.order[1]] = { u:uLeft,  v:vTop    };
+          face.uv[uvDefs.order[2]] = { u:uRight, v:vTop    };
+          face.uv[uvDefs.order[3]] = { u:uRight, v:vBottom };
+        }
       }
     }, this, true);  
   }
@@ -10248,6 +10607,8 @@ class Simplifier {
         
         let faceNormals = face.normals;
         let lastFaceNormals = context.lastFace.normals;
+        let faceUv = face.uv
+        let lastFaceUv = context.lastFace.uv;
         let faceVertexColors = face.vertexColors;
         let lastFaceVertexColors = context.lastFace.vertexColors;
         let faceVertices = face.vertices;
@@ -10281,10 +10642,21 @@ class Simplifier {
         let ratioRight = totalLengthRight === 0 ? 0.5 : faceLengthRight / totalLengthRight;
 
         if ((voxel.material.type === SVOX.MATBASIC ||  // In case of basic material, ignore the normals
-            (this._normalEquals(faceNormals[0], lastFaceNormals[0])  && 
-             this._normalEquals(faceNormals[1], lastFaceNormals[1])  && 
-             this._normalEquals(faceNormals[2], lastFaceNormals[2])  && 
-             this._normalEquals(faceNormals[3], lastFaceNormals[3]))) &&
+            (
+              this._normalEquals(faceNormals[0], lastFaceNormals[0])  && 
+              this._normalEquals(faceNormals[1], lastFaceNormals[1])  && 
+              this._normalEquals(faceNormals[2], lastFaceNormals[2])  && 
+              this._normalEquals(faceNormals[3], lastFaceNormals[3]))
+            ) &&
+            (
+              (!faceUv || !faceUv[0] || !lastFaceUv || !lastFaceUv[0]) ||
+              ( 
+                Math.abs(lastFaceUv[v1].u - (1-ratioLeft)  * faceUv[v1].u - ratioLeft  * lastFaceUv[v0].u) <= MAXDIFF &&
+                Math.abs(lastFaceUv[v1].v - (1-ratioLeft)  * faceUv[v1].v - ratioLeft  * lastFaceUv[v0].v) <= MAXDIFF &&
+                Math.abs(lastFaceUv[v2].u - (1-ratioRight) * faceUv[v2].u - ratioRight * lastFaceUv[v3].u) <= MAXDIFF &&
+                Math.abs(lastFaceUv[v2].v - (1-ratioRight) * faceUv[v2].v - ratioRight * lastFaceUv[v3].v) <= MAXDIFF
+              )
+            ) &&
             ( 
               (!faceVertexColors && !lastFaceVertexColors) || (
                 this._colorEquals(faceVertexColors[0], lastFaceVertexColors[0]) &&
@@ -10293,18 +10665,21 @@ class Simplifier {
                 this._colorEquals(faceVertexColors[3], lastFaceVertexColors[3]) 
               )
             ) && 
-            faceAo[0] === lastFaceAo[0] &&
-            faceAo[1] === lastFaceAo[1] &&
-            faceAo[2] === lastFaceAo[2] &&
-            faceAo[3] === lastFaceAo[3] &&
-            
-            (Math.abs(lastFaceVertices[v1][axis1] - (1-ratioLeft) * faceVertices[v1][axis1] - ratioLeft * lastFaceVertices[v0][axis1]) <= MAXDIFF &&
-             Math.abs(lastFaceVertices[v1][axis2] - (1-ratioLeft) * faceVertices[v1][axis2] - ratioLeft * lastFaceVertices[v0][axis2]) <= MAXDIFF &&
-             Math.abs(lastFaceVertices[v1][axis3] - (1-ratioLeft) * faceVertices[v1][axis3] - ratioLeft * lastFaceVertices[v0][axis3]) <= MAXDIFF &&
-             Math.abs(lastFaceVertices[v2][axis1] - (1-ratioRight) * faceVertices[v2][axis1] - ratioRight * lastFaceVertices[v3][axis1]) <= MAXDIFF &&
-             Math.abs(lastFaceVertices[v2][axis2] - (1-ratioRight) * faceVertices[v2][axis2] - ratioRight * lastFaceVertices[v3][axis2]) <= MAXDIFF &&
-             Math.abs(lastFaceVertices[v2][axis3] - (1-ratioRight) * faceVertices[v2][axis3] - ratioRight * lastFaceVertices[v3][axis3]) <= MAXDIFF )
-           ) 
+           (
+              faceAo[0] === lastFaceAo[0] &&
+              faceAo[1] === lastFaceAo[1] &&
+              faceAo[2] === lastFaceAo[2] &&
+              faceAo[3] === lastFaceAo[3]
+            ) &&            
+            (
+              Math.abs(lastFaceVertices[v1][axis1] - (1-ratioLeft)  * faceVertices[v1][axis1] - ratioLeft  * lastFaceVertices[v0][axis1]) <= MAXDIFF &&
+              Math.abs(lastFaceVertices[v1][axis2] - (1-ratioLeft)  * faceVertices[v1][axis2] - ratioLeft  * lastFaceVertices[v0][axis2]) <= MAXDIFF &&
+              Math.abs(lastFaceVertices[v1][axis3] - (1-ratioLeft)  * faceVertices[v1][axis3] - ratioLeft  * lastFaceVertices[v0][axis3]) <= MAXDIFF &&
+              Math.abs(lastFaceVertices[v2][axis1] - (1-ratioRight) * faceVertices[v2][axis1] - ratioRight * lastFaceVertices[v3][axis1]) <= MAXDIFF &&
+              Math.abs(lastFaceVertices[v2][axis2] - (1-ratioRight) * faceVertices[v2][axis2] - ratioRight * lastFaceVertices[v3][axis2]) <= MAXDIFF &&
+              Math.abs(lastFaceVertices[v2][axis3] - (1-ratioRight) * faceVertices[v2][axis3] - ratioRight * lastFaceVertices[v3][axis3]) <= MAXDIFF 
+            )
+          )
         {
           // Everything checks out, so add this face to the last one
           //console.log(`MERGE: ${this._faceVerticesToString(lastFaceVertices)}`);
@@ -10585,8 +10960,13 @@ class SvoxMeshGenerator {
     
     NormalsCalculator.calculateNormals(model);   
     
-    model.determineBoundsForAllGroups(true); // prepareForResize
+    if (generateUVs) {
+      model.determineBoundsForAllGroups(false); // prepareForResize
+      UVAssigner.assignUVs(model);
+    }    
     
+    model.determineBoundsForAllGroups(true); // prepareForResize
+
     VertexTransformer.transformVertices(model); 
         
     model.determineBoundsForAllGroups();
@@ -10604,10 +10984,6 @@ class SvoxMeshGenerator {
     QuickAOCalculator.calculateQuickAmbientOcclusion(model);
     
     ColorCombiner.combineColors(model);
-
-    if (generateUVs) {
-      UVAssigner.assignUVs(model);
-    }
     
     Simplifier.simplify(model);
     
@@ -10757,22 +11133,23 @@ class SvoxMeshGenerator {
         material[property] = this._createColor(value);
       }
       else if (property === 'envMap' || property === 'matcap') {
-        material[property] = this._createMap(material[property], null, textures, modelSize);
+        material[property] = this._createMap(material[property], null, textures, material.hasAtlas, modelSize);
       }
       else if (property === 'map' || property.endsWith('Map')) {
-        material[property] = this._createMap(material[property], material.mapTransform, textures, modelSize);
+        material[property] = this._createMap(material[property], material.mapTransform, textures, material.hasAtlas, modelSize);
       }
     }
     
     delete material.mapTransform;
+    delete material.mapProject;
             
     return material;
   }
   
-  static _createMap(imageName, mapTransform, textures, modelSize) {
+  static _createMap(imageName, mapTransform, textures, hasAtlas, modelSize) {
     let texture = textures.getById(imageName);
 
-    if (texture.cube) {
+    if (texture.cube || hasAtlas) {
       return { image:    texture.image, 
                uscale:   1, 
                vscale:   1,
@@ -11125,10 +11502,10 @@ class SvoxMeshGenerator {
     vert2 = face.vertices[2];
     vert3 = face.vertices[3];
     
-    shellDirection0 = vert0.smoothNormal; //shellDirection;
-    shellDirection1 = vert1.smoothNormal; //shellDirection;
-    shellDirection2 = vert2.smoothNormal; //shellDirection;
-    shellDirection3 = vert3.smoothNormal; //shellDirection;
+    shellDirection0 = vert0.smoothNormal;
+    shellDirection1 = vert1.smoothNormal;
+    shellDirection2 = vert2.smoothNormal;
+    shellDirection3 = vert3.smoothNormal;
 
     // Now set the actual normals for this face
     let normals = null;
@@ -11400,15 +11777,15 @@ class SvoxToThreejsMeshConverter {
       }
       else if ([ 'map', 'emissiveMap', 'specularColorMap' ].includes(property)) {
         material[property] = SvoxToThreejsMeshConverter._generateTexture(material[property].image, THREE.SRGBColorSpace, 
-                                                                       material[property].uscale, material[property].vscale, 
-                                                                       material[property].uoffset, material[property].voffset, 
-                                                                       material[property].rotation);
+                                                                         material[property].uscale, material[property].vscale, 
+                                                                         material[property].uoffset, material[property].voffset, 
+                                                                         material[property].rotation);
       }
       else if (property.endsWith('Map')) {
         material[property] = SvoxToThreejsMeshConverter._generateTexture(material[property].image, THREE.LinearSRGBColorSpace, 
-                                                                       material[property].uscale, material[property].vscale, 
-                                                                       material[property].uoffset, material[property].voffset, 
-                                                                       material[property].rotation);
+                                                                         material[property].uscale, material[property].vscale, 
+                                                                         material[property].uoffset, material[property].voffset, 
+                                                                         material[property].rotation);
       }
     }
 
@@ -11416,6 +11793,7 @@ class SvoxToThreejsMeshConverter {
     let type = material.type;
     delete material.index;
     delete material.type;
+    delete material.hasAtlas;
     for(const property in material) {
       if (material[property] === undefined || SVOX.MATERIALDEFINITIONS[property] && !SVOX.MATERIALDEFINITIONS[property][type]) {
         delete material[property];
@@ -11487,7 +11865,7 @@ class SvoxToThreejsMeshConverter {
 const workerScript = `
 
 try {
-  importScripts('https://cdn.jsdelivr.net/gh/SamuelVanEgmond/Smooth-Voxels@v2.3.0/dist/smoothvoxels.min.js');
+  importScripts('https://cdn.jsdelivr.net/gh/SamuelVanEgmond/Smooth-Voxels@v2.4.0/dist/smoothvoxels.min.js');
 }
 catch {
   // For local development before the actual release 
